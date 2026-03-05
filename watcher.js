@@ -18,11 +18,49 @@ const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
 
 const bot = new TelegramBot(BOT_TOKEN,{ polling:true });
 
+
+
+// ==============================
+// CHANNEL JOIN WELCOME
+// ==============================
+
+bot.on("new_chat_members",(msg)=>{
+
+const chatId = msg.chat.id;
+
+msg.new_chat_members.forEach((user)=>{
+
+const name = user.first_name || "User";
+
+bot.sendMessage(
+chatId,
+`🎉 Welcome ${name} to Rebirth Charity Channel!
+
+🚀 We're excited to have you here.
+
+Start your journey now 👇`,
+{
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"🚀 Open Rebirth Bot",
+url:"https://t.me/Rebirth_Charity_bot?start=app"
+}
+]
+]
+}
+}
+);
+
+});
+
+});
 // ==============================
 // START COMMAND
 // ==============================
 
- bot.onText(/\/start/, (msg) => {
+bot.onText(/\start/, (msg) => {
 
 bot.sendMessage(
 msg.chat.id,
@@ -40,7 +78,7 @@ web_app:{ url: MINI_APP_URL }
 
 [
 {
-text:"🌐 Open in Chrome",
+text:"🔓 Login from Browser",
 url: MINI_APP_URL
 }
 ]
@@ -51,6 +89,7 @@ url: MINI_APP_URL
 );
 
 });
+
 
 // ==============================
 // LOAD IDS
@@ -134,7 +173,7 @@ inline_keyboard:[
 [
 {
 text:"🚀 Open Rebirth Bot",
-url:"https://t.me/Rebirth_Charity_bot"
+url:"https://t.me/Rebirth_Charity_bot?start=app"
 }
 ]
 ]
