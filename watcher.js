@@ -13,36 +13,44 @@ const getFlagEmoji = require("./src/utils/flag");
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
+
 const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
+const bot = new TelegramBot(BOT_TOKEN,{ polling:true });
 
 // ==============================
 // START COMMAND
 // ==============================
 
-bot.onText(/\/start/, (msg) => {
+ bot.onText(/\/start/, (msg) => {
 
- bot.sendMessage(
-  msg.chat.id,
-  "🚀 Welcome to Rebirth Charity\n\nOpen the login page below 👇",
-  {
-   reply_markup: {
-    inline_keyboard: [
-     [
-      {
-       text: "🔐 Open Login Page",
-       web_app: { url: MINI_APP_URL }
-      }
-     ]
-    ]
-   }
-  }
- );
+bot.sendMessage(
+msg.chat.id,
+"🚀 Welcome to Rebirth Charity\n\nChoose how you want to open the app 👇",
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"📱 Open Mini App",
+web_app:{ url: MINI_APP_URL }
+}
+],
+
+[
+{
+text:"🌐 Open in Chrome",
+url: MINI_APP_URL
+}
+]
+
+]
+}
+}
+);
 
 });
-
 
 // ==============================
 // LOAD IDS
@@ -50,48 +58,45 @@ bot.onText(/\/start/, (msg) => {
 
 let knownIds = new Set();
 
-try {
+try{
 
- if (fs.existsSync("sent.json")) {
+if(fs.existsSync("sent.json")){
 
-  const data = fs.readFileSync("sent.json","utf8");
-  knownIds = new Set(data ? JSON.parse(data) : []);
-
- }
-
-}catch{
-
- console.log("sent.json reset");
- fs.writeFileSync("sent.json","[]");
+const data = fs.readFileSync("sent.json","utf8");
+knownIds = new Set(data ? JSON.parse(data) : []);
 
 }
 
+}catch{
+
+console.log("sent.json reset");
+fs.writeFileSync("sent.json","[]");
+
+}
 
 // ==============================
-// SAVE IDS (limit size)
+// SAVE IDS
 // ==============================
 
 function saveIds(){
 
- const arr = [...knownIds];
+const arr = [...knownIds];
 
- if(arr.length > 5000){
+if(arr.length > 5000){
 
-  const trimmed = arr.slice(-3000);
-  knownIds = new Set(trimmed);
-
- }
-
- fs.writeFileSync(
-  "sent.json",
-  JSON.stringify([...knownIds],null,2)
- );
+const trimmed = arr.slice(-3000);
+knownIds = new Set(trimmed);
 
 }
 
+fs.writeFileSync(
+"sent.json",
+JSON.stringify([...knownIds],null,2)
+);
+
+}
 
 let queue = [];
-
 
 // ==============================
 // TELEGRAM SEND
@@ -99,9 +104,9 @@ let queue = [];
 
 async function sendTelegram(user){
 
- const flag = getFlagEmoji(user.country);
+const flag = getFlagEmoji(user.country);
 
- const message = `
+const message = `
 🚀🔥 <b>REBIRTH CHARITY NEW USER JOIN</b> 🔥🚀
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -115,39 +120,38 @@ async function sendTelegram(user){
 ⏰ <i>${new Date().toLocaleString()}</i>
 `;
 
- try{
+try{
 
-  await axios.post(
-   `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-   {
-    chat_id: CHAT_ID,
-    text: message,
-    parse_mode: "HTML",
+await axios.post(
+`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+{
+chat_id:CHAT_ID,
+text:message,
+parse_mode:"HTML",
 
-    reply_markup:{
-     inline_keyboard:[
-      [
-       {
-        text:"🚀 Open Rebirth App",
-        url:"https://t.me/Rebirth_Charity_bot"
-       }
-      ]
-     ]
-    }
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"🚀 Open Rebirth Bot",
+url:"https://t.me/Rebirth_Charity_bot"
+}
+]
+]
+}
 
-   }
-  );
+}
+);
 
-  console.log("Sent:",user.id);
+console.log("Sent:",user.id);
 
- }catch(err){
+}catch(err){
 
-  console.log("Telegram Error:",err.message);
-
- }
+console.log("Telegram Error:",err.message);
 
 }
 
+}
 
 // ==============================
 // MAIN WATCHER
@@ -155,88 +159,89 @@ async function sendTelegram(user){
 
 async function startWatcher(){
 
- try{
+try{
 
-  const browser = await puppeteer.launch({
+const browser = await puppeteer.launch({
 
-   headless:true,
-   userDataDir:"./profile",
-   args:["--no-sandbox","--disable-setuid-sandbox"]
+headless:true,
+userDataDir:"./profile",
+args:[
+"--no-sandbox",
+"--disable-setuid-sandbox",
+"--disable-dev-shm-usage"
+]
 
-  });
+});
 
-  const page = await browser.newPage();
+const page = await browser.newPage();
 
-  await page.goto(
-   "https://www.rebirthcharity.com/Report/AutoPoolTeam",
-   {waitUntil:"networkidle2"}
-  );
+await page.goto(
+"https://www.rebirthcharity.com/Report/AutoPoolTeam",
+{waitUntil:"networkidle2"}
+);
 
-  console.log("LIVE WATCH STARTED");
+console.log("LIVE WATCH STARTED");
 
+setInterval(async()=>{
 
-  setInterval(async()=>{
+try{
 
-   try{
+await page.reload({waitUntil:"networkidle2"});
 
-    await page.reload({waitUntil:"networkidle2"});
+console.log("Page refreshed");
 
-    console.log("Page refreshed");
+const users = await page.evaluate(()=>{
 
-    const users = await page.evaluate(()=>{
+const rows = document.querySelectorAll("table tbody tr");
 
-     const rows = document.querySelectorAll("table tbody tr");
+return [...rows].map(r=>({
 
-     return [...rows].map(r=>({
+sr:r.children[0]?.innerText.trim(),
+country:r.children[2]?.innerText.trim(),
+id:r.children[3]?.innerText.trim(),
+name:r.children[4]?.innerText.trim()
 
-      sr:r.children[0]?.innerText.trim(),
-      country:r.children[2]?.innerText.trim(),
-      id:r.children[3]?.innerText.trim(),
-      name:r.children[4]?.innerText.trim()
+}));
 
-     }));
+});
 
-    });
+users.sort((a,b)=>Number(b.sr)-Number(a.sr));
 
-    users.sort((a,b)=>Number(b.sr)-Number(a.sr));
+for(const u of users){
 
-    for(const u of users){
+if(!u.id) continue;
 
-     if(!u.id) continue;
+if(!knownIds.has(u.id)){
 
-     if(!knownIds.has(u.id)){
+knownIds.add(u.id);
+saveIds();
 
-      knownIds.add(u.id);
+queue.push(u);
 
-      saveIds();
+console.log("New:",u.id);
 
-      queue.push(u);
+}
 
-      console.log("New:",u.id);
+}
 
-     }
+}catch(err){
 
-    }
+console.log("Fetch error:",err.message);
 
-   }catch(err){
+}
 
-    console.log("Fetch error:",err.message);
+},20000);
 
-   }
+}catch(err){
 
-  },20000);
+console.log("Watcher crash restarting...");
+setTimeout(startWatcher,10000);
 
- }catch(err){
-
-  console.log("Watcher crash, restarting...");
-  setTimeout(startWatcher,10000);
-
- }
+}
 
 }
 
 startWatcher();
-
 
 // ==============================
 // SEND QUEUE
@@ -244,23 +249,22 @@ startWatcher();
 
 setInterval(async()=>{
 
- if(queue.length === 0) return;
+if(queue.length===0) return;
 
- const user = queue.shift();
+const user = queue.shift();
 
- await sendTelegram(user);
+await sendTelegram(user);
 
 },5000);
-
 
 // ==============================
 // GLOBAL ERROR HANDLER
 // ==============================
 
 process.on("uncaughtException",(err)=>{
- console.log("Uncaught:",err.message);
+console.log("Uncaught:",err.message);
 });
 
 process.on("unhandledRejection",(err)=>{
- console.log("Unhandled:",err);
+console.log("Unhandled:",err);
 });
