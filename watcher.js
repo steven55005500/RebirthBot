@@ -34,7 +34,7 @@ const name = user.first_name || "User";
 
 bot.sendMessage(
 chatId,
-`🎉 Welcome ${name} to Rebirth Charity Channel!
+`🎉 Welcome ${name} to Rebirth Charity!
 
 🚀 We're excited to have you here.
 
@@ -60,7 +60,7 @@ url:"https://t.me/Rebirth_Charity_bot?start=app"
 // START COMMAND
 // ==============================
 
-bot.onText(/\start/, (msg) => {
+bot.onText(/\/start/, (msg) => {
 
 bot.sendMessage(
 msg.chat.id,
