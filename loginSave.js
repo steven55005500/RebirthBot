@@ -5,23 +5,24 @@ async function autoLogin(page){
 
 try{
 
-// check if login form exists
 const loginInput = await page.$("#txtusername");
 
 if(loginInput){
 
 console.log("Session expired. Logging in again...");
 
-// username
-await page.type("#txtusername", process.env.LOGIN_ID,{delay:50});
+await page.click("#txtusername",{clickCount:3});
+await page.keyboard.press("Backspace");
 
-// password
-await page.type("input[type=password]", process.env.LOGIN_PASS,{delay:50});
+await page.type("#txtusername",process.env.LOGIN_ID,{delay:50});
 
-// press enter
+await page.click("input[type=password]",{clickCount:3});
+await page.keyboard.press("Backspace");
+
+await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
+
 await page.keyboard.press("Enter");
 
-// wait navigation
 await page.waitForNavigation({waitUntil:"networkidle2"});
 
 console.log("LOGIN SUCCESS");
@@ -40,13 +41,12 @@ console.log("Login error:",err.message);
 
 }
 
-(async () => {
+(async()=>{
 
 const browser = await puppeteer.launch({
 
 headless:true,
 userDataDir:"./profile",
-defaultViewport:null,
 args:[
 "--no-sandbox",
 "--disable-setuid-sandbox",
@@ -57,18 +57,6 @@ args:[
 
 const page = await browser.newPage();
 
-// open login page
-await page.goto(
-"https://www.rebirthcharity.com/Login/Login",
-{waitUntil:"networkidle2"}
-);
-
-// auto login check
-await autoLogin(page);
-
-// keep checking session every 5 minutes
-setInterval(async()=>{
-
 await page.goto(
 "https://www.rebirthcharity.com/Report/AutoPoolTeam",
 {waitUntil:"networkidle2"}
@@ -76,8 +64,14 @@ await page.goto(
 
 await autoLogin(page);
 
+setInterval(async()=>{
+
+await page.reload({waitUntil:"networkidle2"});
+
+await autoLogin(page);
+
 console.log("Session check done");
 
-},300000); // 5 min
+},300000);
 
 })();
