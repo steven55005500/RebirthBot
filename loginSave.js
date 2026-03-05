@@ -1,77 +1,74 @@
 require("dotenv").config();
 const puppeteer = require("puppeteer");
 
-async function autoLogin(page){
+async function autoLogin(page) {
+  try {
 
-try{
+    const loginInput = await page.$("#txtusername");
 
-const loginInput = await page.$("#txtusername");
+    if (loginInput) {
 
-if(loginInput){
+      console.log("Session expired → Logging in...");
 
-console.log("Session expired. Logging in again...");
+      await page.type("#txtusername", process.env.LOGIN_ID, { delay: 50 });
+      await page.type("input[type=password]", process.env.LOGIN_PASS, { delay: 50 });
 
-await page.click("#txtusername",{clickCount:3});
-await page.keyboard.press("Backspace");
+      await page.keyboard.press("Enter");
 
-await page.type("#txtusername",process.env.LOGIN_ID,{delay:50});
+      await page.waitForTimeout(6000);
 
-await page.click("input[type=password]",{clickCount:3});
-await page.keyboard.press("Backspace");
+      console.log("LOGIN SUCCESS");
 
-await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
+    } else {
 
-await page.keyboard.press("Enter");
+      console.log("Already logged in");
 
-await page.waitForNavigation({waitUntil:"networkidle2"});
+    }
 
-console.log("LOGIN SUCCESS");
+  } catch (err) {
 
-}else{
+    console.log("Login error:", err.message);
 
-console.log("Already logged in");
-
+  }
 }
 
-}catch(err){
+(async () => {
 
-console.log("Login error:",err.message);
+  const browser = await puppeteer.launch({
+    headless: true,
+    userDataDir: "./profile",
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage"
+    ]
+  });
 
-}
+  const page = await browser.newPage();
 
-}
+  await page.goto(
+    "https://www.rebirthcharity.com/Report/AutoPoolTeam",
+    { waitUntil: "networkidle2" }
+  );
 
-(async()=>{
+  await autoLogin(page);
 
-const browser = await puppeteer.launch({
+  setInterval(async () => {
 
-headless:true,
-userDataDir:"./profile",
-args:[
-"--no-sandbox",
-"--disable-setuid-sandbox",
-"--disable-dev-shm-usage"
-]
+    try {
 
-});
+      await page.reload({ waitUntil: "networkidle2" });
 
-const page = await browser.newPage();
+      await autoLogin(page);
 
-await page.goto(
-"https://www.rebirthcharity.com/Report/AutoPoolTeam",
-{waitUntil:"networkidle2"}
-);
+      console.log("Page refreshed & session checked");
 
-await autoLogin(page);
+    } catch (err) {
 
-setInterval(async()=>{
+      console.log("Reload error:", err.message);
 
-await page.reload({waitUntil:"networkidle2"});
+    }
 
-await autoLogin(page);
-
-console.log("Session check done");
-
-},300000);
+  }, 300000);
 
 })();
