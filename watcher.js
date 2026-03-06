@@ -146,17 +146,26 @@ async function sendTelegram(user){
 const flag = getFlagEmoji(user.country);
 
 const message = `
-🚀🔥 <b>REBIRTH CHARITY NEW USER JOIN</b> 🔥🚀
+🚀🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥🚀
+━━━━━━━━━━━━━━━━━━━━
+
+👤 <b>Name:</b> ${user.name}
+🆔 <b>User ID:</b> <code>${user.id}</code>
+🌍 <b>Country:</b> ${flag} ${user.country}
+💲 <b>Donate:</b> $30
 
 ━━━━━━━━━━━━━━━━━━━━
 
-👤 <b>Name :</b> ${user.name}
-🆔 <b>User ID :</b> <code>${user.id}</code>
-🌍 <b>Country :</b> ${flag} ${user.country}
+⏰ <b>Date & Time:</b> ${new Date().toLocaleString()}
+
+🎉 <b>Congratulations & Welcome to REBIRTH CHARITY!</b>
+
+💰 <i>Start your journey and grow with our Rebirth charity community.</i>
 
 ━━━━━━━━━━━━━━━━━━━━
 
-⏰ <i>${new Date().toLocaleString()}</i>
+🔥 <b>More leaders are joining every day!</b>
+🚀 <b>Don't miss the opportunity – Join Now!</b>
 `;
 
 try{
@@ -172,7 +181,7 @@ reply_markup:{
 inline_keyboard:[
 [
 {
-text:"🚀 Open Rebirth Bot",
+text:"🚀 Join Rebirth Charity Now",
 url:"https://t.me/Rebirth_Charity_bot?start=app"
 }
 ]
