@@ -9,6 +9,11 @@ const RPC = process.env.RPC;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
+if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
+console.log("❌ Missing ENV values");
+process.exit(1);
+}
+
 // ================= ADDRESSES =================
 
 const WATCH_ADDRESS =
@@ -17,21 +22,15 @@ const WATCH_ADDRESS =
 const USDT_CONTRACT =
 "0x55d398326f99059ff775485246999027b3197955";
 
-// ================= CHECK =================
-
-if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-console.log("❌ Missing ENV values");
-process.exit(1);
-}
-
 // ================= PROVIDER =================
 
 const provider = new ethers.JsonRpcProvider(RPC);
+
 provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
 
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling:false });
 
 // ================= ABI =================
 
@@ -41,15 +40,21 @@ const ABI = [
 
 // ================= CONTRACT =================
 
-const contract = new ethers.Contract(USDT_CONTRACT, ABI, provider);
+const contract = new ethers.Contract(
+USDT_CONTRACT,
+ABI,
+provider
+);
 
 console.log("🔥 Rebirth Deposit Scanner Started");
-console.log("👀 Watching wallet:", WATCH_ADDRESS);
+console.log("👀 Watching:",WATCH_ADDRESS);
 
 // ================= SETTINGS =================
 
 const DECIMALS = 18;
-let txPool = [];
+
+let txQueue = [];
+
 let sentHashes = new Set();
 
 // ================= FILTER =================
@@ -68,7 +73,11 @@ return true;
 
 // ================= LISTENER =================
 
-contract.on("Transfer", async (from,to,value,event)=>{
+function startListener(){
+
+console.log("🎧 Listener started");
+
+contract.on("Transfer",async(from,to,value,event)=>{
 
 try{
 
@@ -77,19 +86,22 @@ ethers.formatUnits(value,DECIMALS)
 );
 
 const toAddress = to.toLowerCase();
+
 const hash = event.log.transactionHash;
 
 if(sentHashes.has(hash)) return;
 
-console.log("TX:",from,"→",toAddress,"Amount:",amount);
+console.log(
+"TX:",from,"→",toAddress,"Amount:",amount
+);
 
-// WATCH WALLET DEPOSIT
+// WATCH WALLET
 
 if(toAddress === WATCH_ADDRESS){
 
-console.log("✅ Deposit to WATCH_ADDRESS");
+console.log("✅ Deposit to WATCH WALLET");
 
-txPool.push({
+txQueue.push({
 from,
 to,
 amount,
@@ -102,13 +114,13 @@ return;
 
 }
 
-// GLOBAL USDT TRANSFER FILTER
+// GLOBAL VALID TRANSFERS
 
 if(isValidAmount(amount)){
 
-console.log("✅ Valid USDT Deposit Detected");
+console.log("✅ Valid USDT detected");
 
-txPool.push({
+txQueue.push({
 from,
 to,
 amount,
@@ -127,31 +139,51 @@ console.log("Listener Error:",err.message);
 
 });
 
-// ================= RANDOM =================
-
-function randomInt(min,max){
-return Math.floor(Math.random()*(max-min+1))+min;
 }
 
-// ================= SENDER LOOP =================
+// ================= AUTO RESTART =================
 
-setInterval(async ()=>{
+provider.on("error",(err)=>{
+
+console.log("⚠ Provider error:",err.message);
+
+if(err.message.includes("filter not found")){
+
+console.log("🔄 Restarting listener");
+
+contract.removeAllListeners();
+
+startListener();
+
+}
+
+});
+
+// ================= RANDOM =================
+
+function randomDelay(){
+
+return Math.floor(Math.random()*15000)+5000;
+
+}
+
+// ================= SEND LOOP =================
+
+async function senderLoop(){
+
+while(true){
 
 try{
 
-if(txPool.length === 0){
-console.log("⏳ No deposits found");
-return;
+if(txQueue.length === 0){
+
+await new Promise(r=>setTimeout(r,4000));
+
+continue;
+
 }
 
-// send 2-4 tx
-
-const sendCount = randomInt(2,4);
-
-const shuffled = txPool.sort(()=>0.5-Math.random());
-const selected = shuffled.slice(0,sendCount);
-
-for(const tx of selected){
+const tx = txQueue.shift();
 
 const message = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
@@ -176,11 +208,7 @@ await bot.sendMessage(CHANNEL_ID,message);
 
 console.log("📤 Sent:",tx.amount);
 
-}
-
-// clear pool
-
-txPool = [];
+await new Promise(r=>setTimeout(r,randomDelay()));
 
 }catch(err){
 
@@ -188,4 +216,12 @@ console.log("Send Error:",err.message);
 
 }
 
-},300000); // 5 minutes
+}
+
+}
+
+// ================= START =================
+
+startListener();
+
+senderLoop();

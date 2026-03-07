@@ -27,6 +27,7 @@ const countryMap = {
 "China":"CN",
 "Japan":"JP",
 "Bhutan":"BT",
+"Oman":"OM",
  "South Korea":"KR",
  "Indonesia":"ID",
  "Malaysia":"MY",
