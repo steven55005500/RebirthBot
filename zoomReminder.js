@@ -1,5 +1,6 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 
 const bot = new TelegramBot(process.env.BOT_TOKEN);
 const CHAT_ID = process.env.CHAT_ID;
@@ -63,19 +64,17 @@ Earn up to $2520 in 168 Days.
 async function sendMessages() {
   try {
 
-    // Zoom Message
     await bot.sendMessage(CHAT_ID, message1);
 
-    // Plan Message
+    await new Promise(r => setTimeout(r, 2000));
+
     await bot.sendMessage(CHAT_ID, message2);
 
-    // PDF with custom name
+    await new Promise(r => setTimeout(r, 2000));
+
     await bot.sendDocument(
       CHAT_ID,
-      {
-        source: "./plan.pdf",
-        filename: "REBIRTH_CHARITY.pdf"
-      },
+      fs.createReadStream("./plan.pdf"),
       {
         caption: "📄 REBIRTH CHARITY – FULL PLAN"
       }
