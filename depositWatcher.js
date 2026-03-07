@@ -27,10 +27,8 @@ if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 // ================= PROVIDER =================
 // Stable polling provider (RPC filter error fix)
 
-const provider = new ethers.JsonRpcProvider(RPC, {
-  polling: true,
-  pollingInterval: 4000
-});
+const provider = new ethers.JsonRpcProvider(RPC);
+provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
 
