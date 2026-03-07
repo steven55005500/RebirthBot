@@ -77,14 +77,13 @@ ethers.formatUnits(value,DECIMALS)
 );
 
 const toAddress = to.toLowerCase();
-
 const hash = event.log.transactionHash;
 
 if(sentHashes.has(hash)) return;
 
 console.log("TX:",from,"→",toAddress,"Amount:",amount);
 
-// ================= WALLET =================
+// WATCH WALLET DEPOSIT
 
 if(toAddress === WATCH_ADDRESS){
 
@@ -103,13 +102,11 @@ return;
 
 }
 
-// ================= CONTRACT =================
+// GLOBAL USDT TRANSFER FILTER
 
-if(toAddress === USDT_CONTRACT.toLowerCase()){
+if(isValidAmount(amount)){
 
-if(!isValidAmount(amount)) return;
-
-console.log("✅ Valid contract deposit");
+console.log("✅ Valid USDT Deposit Detected");
 
 txPool.push({
 from,
@@ -133,9 +130,7 @@ console.log("Listener Error:",err.message);
 // ================= RANDOM =================
 
 function randomInt(min,max){
-
 return Math.floor(Math.random()*(max-min+1))+min;
-
 }
 
 // ================= SENDER LOOP =================
@@ -145,19 +140,15 @@ setInterval(async ()=>{
 try{
 
 if(txPool.length === 0){
-
 console.log("⏳ No deposits found");
-
 return;
-
 }
 
-// 2-4 transactions send
+// send 2-4 tx
 
 const sendCount = randomInt(2,4);
 
 const shuffled = txPool.sort(()=>0.5-Math.random());
-
 const selected = shuffled.slice(0,sendCount);
 
 for(const tx of selected){
@@ -188,6 +179,7 @@ console.log("📤 Sent:",tx.amount);
 }
 
 // clear pool
+
 txPool = [];
 
 }catch(err){
