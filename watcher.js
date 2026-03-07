@@ -220,7 +220,10 @@ const page = await browser.newPage();
 
 await page.goto(
 "https://www.rebirthcharity.com/Report/AutoPoolTeam",
-{waitUntil:"networkidle2"}
+{
+waitUntil:"domcontentloaded",
+timeout:0
+}
 );
 
 console.log("LIVE WATCH STARTED");
@@ -229,7 +232,10 @@ setInterval(async()=>{
 
 try{
 
-await page.reload({waitUntil:"networkidle2"});
+await page.reload({
+waitUntil:"domcontentloaded",
+timeout:0
+});
 
 console.log("Page refreshed");
 
@@ -277,7 +283,9 @@ console.log("Fetch error:",err.message);
 
 }catch(err){
 
-console.log("Watcher crash restarting...");
+console.log("Watcher crash:",err);
+console.log("Restarting watcher in 10 seconds...");
+
 setTimeout(startWatcher,10000);
 
 }
