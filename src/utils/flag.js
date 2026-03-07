@@ -14,6 +14,7 @@ const countryMap = {
  "UAE":"AE",
  "United States":"US",
  "USA":"US",
+ "Afghanistan":"AF",
  "United Kingdom":"GB",
  "UK":"GB",
  "Canada":"CA",

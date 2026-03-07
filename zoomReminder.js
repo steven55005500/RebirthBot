@@ -137,10 +137,8 @@ async function sendMessages() {
 
     await bot.sendDocument(
       CHAT_ID,
-      fs.createReadStream("./plan.pdf"),
-      {
-        caption: "📄 REBIRTH CHARITY – FULL PLAN"
-      }
+      fs.createReadStream("./REBIRTH_CHARITHY.pdf"),
+     
     );
 
     console.log("Zoom + Plan message sent");
