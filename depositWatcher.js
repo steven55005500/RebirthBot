@@ -25,8 +25,12 @@ if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 }
 
 // ================= PROVIDER =================
+// Stable polling provider (RPC filter error fix)
 
-const provider = new ethers.JsonRpcProvider(RPC);
+const provider = new ethers.JsonRpcProvider(RPC, {
+  polling: true,
+  pollingInterval: 4000
+});
 
 // ================= TELEGRAM =================
 
@@ -43,6 +47,7 @@ const ABI = [
 const contract = new ethers.Contract(USDT_CONTRACT, ABI, provider);
 
 console.log("🔥 Rebirth Deposit Scanner Started");
+console.log("👀 Watching wallet:", WATCH_ADDRESS);
 
 // ================= SETTINGS =================
 
@@ -69,8 +74,13 @@ contract.on("Transfer", async (from, to, value, event) => {
 
     const toAddress = to.toLowerCase();
 
-    // YOUR WALLET → NO FILTER
+    console.log("TX detected:", from, "→", toAddress, "Amount:", amount);
+
+    // ================= WALLET (NO FILTER) =================
+
     if (toAddress === WATCH_ADDRESS) {
+
+      console.log("✅ Deposit to WATCH_ADDRESS detected");
 
       txPool.push({
         from,
@@ -82,10 +92,13 @@ contract.on("Transfer", async (from, to, value, event) => {
       return;
     }
 
-    // USDT CONTRACT → FILTER
+    // ================= USDT CONTRACT FILTER =================
+
     if (toAddress === USDT_CONTRACT.toLowerCase()) {
 
       if (!isValidAmount(amount)) return;
+
+      console.log("✅ Valid USDT contract deposit detected");
 
       txPool.push({
         from,
@@ -117,8 +130,11 @@ setInterval(async () => {
   try {
 
     if (txPool.length === 0) {
-      console.log("No deposits found");
+
+      console.log("⏳ No deposits found");
+
       return;
+
     }
 
     const sendCount = randomInt(1, 4);
@@ -149,9 +165,9 @@ https://bscscan.com/tx/${tx.hash}
 
       await bot.sendMessage(CHANNEL_ID, message);
 
-    }
+      console.log("📤 Sent deposit to Telegram:", tx.amount);
 
-    console.log(`✅ Sent ${selected.length} deposits`);
+    }
 
     txPool = [];
 
