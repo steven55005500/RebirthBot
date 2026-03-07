@@ -22,7 +22,7 @@ async function autoLogin(page) {
 
       await page.keyboard.press("Enter");
 
-      await page.waitForTimeout(7000);
+      await new Promise(resolve => setTimeout(resolve,7000));
 
       console.log("LOGIN SUCCESS");
 
