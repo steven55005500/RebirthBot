@@ -246,6 +246,8 @@ waitUntil:"domcontentloaded",
 timeout:0
 });
 
+await new Promise(r=>setTimeout(r,3000));
+
 const loginInput = await page.$("#txtusername");
 
 if(loginInput){
@@ -264,7 +266,10 @@ await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
 
 await page.keyboard.press("Enter");
 
-await new Promise(r=>setTimeout(r,6000));
+await page.waitForNavigation({
+waitUntil:"domcontentloaded",
+timeout:0
+});
 
 console.log("LOGIN SUCCESS");
 
@@ -307,6 +312,11 @@ console.log("New:",u.id);
 }
 
 }catch(err){
+
+if(err.message.includes("Execution context was destroyed")){
+console.log("Page navigating... retrying");
+return;
+}
 
 console.log("Fetch error:",err.message);
 
