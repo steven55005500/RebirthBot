@@ -163,7 +163,10 @@ startListener();
 
 function randomDelay(){
 
-return Math.floor(Math.random()*15000)+5000;
+const min = 2 * 60 * 1000; // 2 minutes
+const max = 5 * 60 * 1000; // 5 minutes
+
+return Math.floor(Math.random() * (max - min + 1)) + min;
 
 }
 
