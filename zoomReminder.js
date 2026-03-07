@@ -152,4 +152,4 @@ async function sendMessages() {
 sendMessages();
 
 // Har 15 minute me repeat
-setInterval(sendMessages, 15 * 60 * 1000);
+setInterval(sendMessages, 30 * 60 * 1000);
