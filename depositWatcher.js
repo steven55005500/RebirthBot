@@ -6,8 +6,8 @@ const TelegramBot = require("node-telegram-bot-api");
 // ================= ENV =================
 
 const RPC = process.env.BSC_NODE_URL;
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID;
+const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
+const CHANNEL_ID = process.env.CHAT_ID;
 
 // ================= ADDRESSES =================
 
@@ -52,11 +52,8 @@ let txPool = [];
 // ================= FILTER =================
 
 function isValidAmount(amount) {
-
   if (amount < 30 || amount > 900) return false;
-
   if (amount % 30 !== 0) return false;
-
   return true;
 }
 
@@ -72,9 +69,7 @@ contract.on("Transfer", async (from, to, value, event) => {
 
     const toAddress = to.toLowerCase();
 
-    // ================= CASE 1 =================
     // YOUR WALLET → NO FILTER
-
     if (toAddress === WATCH_ADDRESS) {
 
       txPool.push({
@@ -87,9 +82,7 @@ contract.on("Transfer", async (from, to, value, event) => {
       return;
     }
 
-    // ================= CASE 2 =================
     // USDT CONTRACT → FILTER
-
     if (toAddress === USDT_CONTRACT.toLowerCase()) {
 
       if (!isValidAmount(amount)) return;
@@ -124,22 +117,18 @@ setInterval(async () => {
   try {
 
     if (txPool.length === 0) {
-
       console.log("No deposits found");
-
       return;
-
     }
 
     const sendCount = randomInt(1, 4);
 
     const shuffled = txPool.sort(() => 0.5 - Math.random());
-
     const selected = shuffled.slice(0, sendCount);
 
     for (const tx of selected) {
 
-  const message = `
+      const message = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
@@ -157,6 +146,7 @@ https://bscscan.com/tx/${tx.hash}
 ━━━━━━━━━━━━━━━━━━
 🎉 Successful Deposit Confirmed
 `;
+
       await bot.sendMessage(CHANNEL_ID, message);
 
     }
