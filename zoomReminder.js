@@ -137,7 +137,7 @@ async function sendMessages() {
 
     await bot.sendDocument(
       CHAT_ID,
-      fs.createReadStream("./REBIRTH_CHARITHY.pdf"),
+      fs.createReadStream("./REBIRTH_CHARITY.pdf"),
      
     );
 
