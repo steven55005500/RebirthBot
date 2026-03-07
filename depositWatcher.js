@@ -5,27 +5,26 @@ const TelegramBot = require("node-telegram-bot-api");
 
 // ================= ENV =================
 
-const RPC = process.env.BSC_NODE_URL;
+const RPC = process.env.RPC;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 // ================= ADDRESSES =================
 
 const WATCH_ADDRESS =
-  "0xc8Bcf348A74018B11DCB52765Bd818E85FBE6A3f".toLowerCase();
+"0xc8Bcf348A74018B11DCB52765Bd818E85FBE6A3f".toLowerCase();
 
 const USDT_CONTRACT =
-  "0x55d398326f99059ff775485246999027b3197955";
+"0x55d398326f99059ff775485246999027b3197955";
 
 // ================= CHECK =================
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-  console.log("❌ Missing ENV values");
-  process.exit(1);
+console.log("❌ Missing ENV values");
+process.exit(1);
 }
 
 // ================= PROVIDER =================
-// Stable polling provider (RPC filter error fix)
 
 const provider = new ethers.JsonRpcProvider(RPC);
 provider.pollingInterval = 4000;
@@ -37,7 +36,7 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 // ================= ABI =================
 
 const ABI = [
-  "event Transfer(address indexed from,address indexed to,uint256 value)"
+"event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
 
 // ================= CONTRACT =================
@@ -51,128 +50,150 @@ console.log("👀 Watching wallet:", WATCH_ADDRESS);
 
 const DECIMALS = 18;
 let txPool = [];
+let sentHashes = new Set();
 
 // ================= FILTER =================
 
-function isValidAmount(amount) {
-  if (amount < 30 || amount > 900) return false;
-  if (amount % 30 !== 0) return false;
-  return true;
+function isValidAmount(amount){
+
+if(amount < 30) return false;
+
+if(amount > 900) return false;
+
+if(amount % 10 !== 0) return false;
+
+return true;
+
 }
 
 // ================= LISTENER =================
 
-contract.on("Transfer", async (from, to, value, event) => {
+contract.on("Transfer", async (from,to,value,event)=>{
 
-  try {
+try{
 
-    const amount = Number(
-      ethers.formatUnits(value, DECIMALS)
-    );
+const amount = Number(
+ethers.formatUnits(value,DECIMALS)
+);
 
-    const toAddress = to.toLowerCase();
+const toAddress = to.toLowerCase();
 
-    console.log("TX detected:", from, "→", toAddress, "Amount:", amount);
+const hash = event.log.transactionHash;
 
-    // ================= WALLET (NO FILTER) =================
+if(sentHashes.has(hash)) return;
 
-    if (toAddress === WATCH_ADDRESS) {
+console.log("TX:",from,"→",toAddress,"Amount:",amount);
 
-      console.log("✅ Deposit to WATCH_ADDRESS detected");
+// ================= WALLET =================
 
-      txPool.push({
-        from,
-        to,
-        amount,
-        hash: event.log.transactionHash
-      });
+if(toAddress === WATCH_ADDRESS){
 
-      return;
-    }
+console.log("✅ Deposit to WATCH_ADDRESS");
 
-    // ================= USDT CONTRACT FILTER =================
+txPool.push({
+from,
+to,
+amount,
+hash
+});
 
-    if (toAddress === USDT_CONTRACT.toLowerCase()) {
+sentHashes.add(hash);
 
-      if (!isValidAmount(amount)) return;
+return;
 
-      console.log("✅ Valid USDT contract deposit detected");
+}
 
-      txPool.push({
-        from,
-        to,
-        amount,
-        hash: event.log.transactionHash
-      });
+// ================= CONTRACT =================
 
-    }
+if(toAddress === USDT_CONTRACT.toLowerCase()){
 
-  } catch (err) {
+if(!isValidAmount(amount)) return;
 
-    console.log("Listener Error:", err.message);
+console.log("✅ Valid contract deposit");
 
-  }
+txPool.push({
+from,
+to,
+amount,
+hash
+});
+
+sentHashes.add(hash);
+
+}
+
+}catch(err){
+
+console.log("Listener Error:",err.message);
+
+}
 
 });
 
 // ================= RANDOM =================
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function randomInt(min,max){
+
+return Math.floor(Math.random()*(max-min+1))+min;
+
 }
 
 // ================= SENDER LOOP =================
 
-setInterval(async () => {
+setInterval(async ()=>{
 
-  try {
+try{
 
-    if (txPool.length === 0) {
+if(txPool.length === 0){
 
-      console.log("⏳ No deposits found");
+console.log("⏳ No deposits found");
 
-      return;
+return;
 
-    }
+}
 
-    const sendCount = randomInt(1, 4);
+// 2-4 transactions send
 
-    const shuffled = txPool.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, sendCount);
+const sendCount = randomInt(2,4);
 
-    for (const tx of selected) {
+const shuffled = txPool.sort(()=>0.5-Math.random());
 
-      const message = `
+const selected = shuffled.slice(0,sendCount);
+
+for(const tx of selected){
+
+const message = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
 💰 Amount: $${tx.amount} USDT
 
-📤 From:
+📤 From
 ${tx.from}
 
-📥 To:
+📥 To
 ${tx.to}
 
-🔗 Transaction:
+🔗 Transaction
 https://bscscan.com/tx/${tx.hash}
 
 ━━━━━━━━━━━━━━━━━━
 🎉 Successful Deposit Confirmed
 `;
 
-      await bot.sendMessage(CHANNEL_ID, message);
+await bot.sendMessage(CHANNEL_ID,message);
 
-      console.log("📤 Sent deposit to Telegram:", tx.amount);
+console.log("📤 Sent:",tx.amount);
 
-    }
+}
 
-    txPool = [];
+// clear pool
+txPool = [];
 
-  } catch (err) {
+}catch(err){
 
-    console.log("Send Error:", err.response?.body || err.message);
+console.log("Send Error:",err.message);
 
-  }
+}
 
-}, 300000); // 5 minutes
+},300000); // 5 minutes
