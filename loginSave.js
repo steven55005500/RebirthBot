@@ -1,56 +1,55 @@
 require("dotenv").config();
 const puppeteer = require("puppeteer");
 
-async function autoLogin(page) {
-  try {
+async function autoLogin(page){
+  try{
 
     const loginInput = await page.$("#txtusername");
 
-    if (loginInput) {
+    if(loginInput){
 
       console.log("Session expired → Logging in...");
 
       await page.click("#txtusername",{clickCount:3});
       await page.keyboard.press("Backspace");
-
-      await page.type("#txtusername", process.env.LOGIN_ID, { delay: 50 });
+      await page.type("#txtusername",process.env.LOGIN_ID,{delay:50});
 
       await page.click("input[type=password]",{clickCount:3});
       await page.keyboard.press("Backspace");
-
-      await page.type("input[type=password]", process.env.LOGIN_PASS, { delay: 50 });
+      await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
 
       await page.keyboard.press("Enter");
 
-      await new Promise(resolve => setTimeout(resolve,7000));
+      await new Promise(r=>setTimeout(r,7000));
 
       console.log("LOGIN SUCCESS");
 
-    } else {
+    }else{
 
-      console.log("Already logged in");
+      console.log("Session active");
 
     }
 
-  } catch (err) {
-
-    console.log("Login error:", err.message);
-
+  }catch(err){
+    console.log("Login error:",err.message);
   }
 }
 
-async function start() {
+async function start(){
 
-  try {
+  let browser;
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      userDataDir: "./profile",
-      args: [
+  try{
+
+    browser = await puppeteer.launch({
+      headless:true,
+      userDataDir:"./profile",
+      args:[
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--disable-gpu"
+        "--disable-gpu",
+        "--disable-crash-reporter"
       ]
     });
 
@@ -61,39 +60,49 @@ async function start() {
     await page.goto(
       "https://www.rebirthcharity.com/Report/AutoPoolTeam",
       {
-        waitUntil: "domcontentloaded",
-        timeout: 0
+        waitUntil:"domcontentloaded",
+        timeout:0
       }
     );
 
-    console.log("Watcher started");
+    console.log("WATCHER STARTED");
 
     await autoLogin(page);
 
-    setInterval(async () => {
+    setInterval(async()=>{
 
-      try {
+      try{
 
         await page.reload({
-          waitUntil: "domcontentloaded",
-          timeout: 0
+          waitUntil:"domcontentloaded",
+          timeout:0
         });
 
         await autoLogin(page);
 
         console.log("Page refreshed & session checked");
 
-      } catch (err) {
+      }catch(err){
 
-        console.log("Reload error:", err.message);
+        console.log("Reload error:",err.message);
 
       }
 
-    }, 300000); // 5 minutes
+    },300000); // 5 minutes
 
-  } catch (err) {
+    // Internet error recovery
+    page.on("error",async()=>{
+      console.log("Page crashed → restarting browser");
+      await browser.close();
+      start();
+    });
 
-    console.log("Browser crash restarting...");
+  }catch(err){
+
+    console.log("Browser error:",err.message);
+    console.log("Restarting in 10 seconds...");
+
+    if(browser) await browser.close();
 
     setTimeout(start,10000);
 

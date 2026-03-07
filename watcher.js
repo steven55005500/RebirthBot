@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./zoomReminder");
 
 const puppeteer = require("puppeteer");
 const axios = require("axios");
@@ -216,7 +217,15 @@ args:[
 
 });
 
+
 const page = await browser.newPage();
+
+page.on("error", async () => {
+  console.log("Page crashed → restarting watcher");
+  await browser.close();
+  setTimeout(startWatcher,5000);
+});
+
 
 await page.goto(
 "https://www.rebirthcharity.com/Report/AutoPoolTeam",
@@ -236,6 +245,30 @@ await page.reload({
 waitUntil:"domcontentloaded",
 timeout:0
 });
+
+const loginInput = await page.$("#txtusername");
+
+if(loginInput){
+
+console.log("Session expired → Logging in");
+
+await page.click("#txtusername",{clickCount:3});
+await page.keyboard.press("Backspace");
+
+await page.type("#txtusername",process.env.LOGIN_ID,{delay:50});
+
+await page.click("input[type=password]",{clickCount:3});
+await page.keyboard.press("Backspace");
+
+await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
+
+await page.keyboard.press("Enter");
+
+await new Promise(r=>setTimeout(r,6000));
+
+console.log("LOGIN SUCCESS");
+
+}
 
 console.log("Page refreshed");
 
@@ -306,7 +339,7 @@ const user = queue.shift();
 
 await sendTelegram(user);
 
-},5000);
+},15000);
 
 // ==============================
 // GLOBAL ERROR HANDLER
