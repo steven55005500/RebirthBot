@@ -60,7 +60,7 @@ if(amount < 30) return false;
 
 if(amount > 900) return false;
 
-if(amount % 10 !== 0) return false;
+if(amount % 30 !== 0) return false;
 
 return true;
 
