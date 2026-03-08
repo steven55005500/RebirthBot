@@ -27,10 +27,16 @@ const MIN_AMOUNT = 1;
 
 // ================= PROVIDER =================
 
-const provider = new ethers.JsonRpcProvider(RPC);
+// ================= PROVIDER =================
 
-provider.pollingInterval = 7000;
+const provider = new ethers.WebSocketProvider(RPC);
 
+provider._websocket.on("close", () => {
+console.log("⚠ WebSocket closed. Restarting bot...");
+process.exit(1);
+});
+
+ 
 // ================= TELEGRAM =================
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
