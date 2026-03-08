@@ -5,11 +5,13 @@ const TelegramBot = require("node-telegram-bot-api");
 
 // ================= ENV =================
 
-const RPC = process.env.RPC_WALLET;
+const RPC1 = process.env.RPC_WALLET;
+const RPC2 = process.env.RPC_BACKUP;
+
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
-if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
+if (!RPC1 || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 console.log("❌ Missing ENV values");
 process.exit(1);
 }
@@ -27,17 +29,47 @@ const MIN_AMOUNT = 1;
 
 // ================= PROVIDER =================
 
-// ================= PROVIDER =================
+let provider;
 
-// ================= PROVIDER =================
+function createProvider(rpc){
 
-const provider = new ethers.WebSocketProvider(RPC);
+const ws = new ethers.WebSocketProvider(rpc);
 
-provider.on("error",(err)=>{
-console.log("⚠ Provider error:",err.message);
+ws._websocket.on("close",()=>{
+console.log("⚠ WebSocket closed");
+setTimeout(()=>{
+startProvider();
+},3000);
 });
 
- 
+ws._websocket.on("error",(err)=>{
+console.log("⚠ WebSocket error:",err.message);
+});
+
+return ws;
+
+}
+
+function startProvider(){
+
+console.log("🔌 Connecting RPC...");
+
+try{
+
+provider = createProvider(RPC1);
+
+}catch(e){
+
+console.log("⚠ Main RPC failed, using backup");
+
+provider = createProvider(RPC2);
+
+}
+
+startBot();
+
+}
+
 // ================= TELEGRAM =================
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
@@ -47,17 +79,6 @@ const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 const ABI = [
 "event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
-
-// ================= CONTRACT =================
-
-const contract = new ethers.Contract(
-USDT,
-ABI,
-provider
-);
-
-console.log("👀 Wallet watcher started");
-console.log("Watching:",WATCH);
 
 // ================= MEMORY =================
 
@@ -100,7 +121,28 @@ console.log("Telegram error:",e.message);
 
 }
 
-// ================= LAST 5 SCAN =================
+// ================= CONTRACT =================
+
+let contract;
+
+function startBot(){
+
+contract = new ethers.Contract(
+USDT,
+ABI,
+provider
+);
+
+console.log("👀 Wallet watcher started");
+console.log("Watching:",WATCH);
+
+loadLast5();
+
+startListener();
+
+}
+
+// ================= LAST SCAN =================
 
 async function loadLast5(){
 
@@ -118,9 +160,9 @@ ethers.id("Transfer(address,address,uint256)");
 const logs = await provider.getLogs({
 
 address: USDT,
-fromBlock: fromBlock,
+fromBlock,
 toBlock: currentBlock,
-topics: [
+topics:[
 transferTopic,
 null,
 ethers.zeroPadValue(WATCH,32)
@@ -130,16 +172,13 @@ ethers.zeroPadValue(WATCH,32)
 
 let found = 0;
 
-for(let i = logs.length - 1; i >= 0; i--){
+for(let i = logs.length-1;i>=0;i--){
 
-if(found >= 5) break;
+if(found >=5) break;
 
 const log = logs[i];
 
 const parsed = contract.interface.parseLog(log);
-
-const from = parsed.args.from;
-const to = parsed.args.to;
 
 const amount = Number(
 ethers.formatUnits(parsed.args.value,DECIMALS)
@@ -152,8 +191,8 @@ const hash = log.transactionHash;
 if(sent.has(hash)) continue;
 
 await send({
-from,
-to,
+from: parsed.args.from,
+to: parsed.args.to,
 amount,
 hash
 });
@@ -164,7 +203,7 @@ found++;
 
 }
 
-console.log("✅ Last deposits sent:",found);
+console.log("✅ Last deposits:",found);
 
 }catch(err){
 
@@ -196,7 +235,7 @@ ethers.formatUnits(value,DECIMALS)
 
 if(amount < MIN_AMOUNT) return;
 
-const hash = event.transactionHash;
+const hash = event.log.transactionHash;
 
 if(sent.has(hash)) return;
 
@@ -225,28 +264,10 @@ console.log("Listener error:",err.message);
 
 }
 
-// ================= FILTER ERROR FIX =================
-
-provider.on("error",(err)=>{
-
-console.log("⚠ Provider error:",err.message);
-
-if(err.message.includes("filter not found")){
-
-console.log("🔄 Restarting listener");
-
-startListener();
-
-}
-
-});
-
 // ================= START =================
 
-(async()=>{
+startProvider();
 
-await loadLast5();
+// keep process alive
 
-startListener();
-
-})();
+setInterval(()=>{},1000);
