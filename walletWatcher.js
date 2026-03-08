@@ -14,23 +14,10 @@ console.log("❌ Missing ENV values");
 process.exit(1);
 }
 
-// ================= PROVIDER =================
-
-let provider = new ethers.JsonRpcProvider(RPC);
-
-provider.polling = true;
-provider.pollingInterval = 7000;
-
-// ================= TELEGRAM =================
-
-const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
-
-// ================= WATCH WALLET =================
+// ================= SETTINGS =================
 
 const WATCH =
 "0xc8bcf348a74018b11dcb52765bd818e85fbe6a3f".toLowerCase();
-
-// ================= USDT =================
 
 const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
@@ -38,28 +25,90 @@ const USDT =
 const DECIMALS = 18;
 const MIN_AMOUNT = 1;
 
+// ================= TELEGRAM =================
+
+const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
+
 // ================= ABI =================
 
 const ABI = [
 "event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
 
-// ================= CONTRACT =================
+// ================= VARIABLES =================
 
-let contract = new ethers.Contract(
+let provider;
+let contract;
+let reconnecting = false;
+
+let sent = new Set();
+
+// ================= PROVIDER INIT =================
+
+function createProvider(){
+
+provider = new ethers.JsonRpcProvider(RPC);
+
+provider.polling = true;
+provider.pollingInterval = 7000;
+
+attachProviderEvents();
+
+contract = new ethers.Contract(
 USDT,
 ABI,
 provider
 );
 
-// ================= MEMORY =================
+}
 
-let sent = new Set();
+// ================= PROVIDER EVENTS =================
 
-console.log("👀 Wallet watcher started");
-console.log("Watching:",WATCH);
+function attachProviderEvents(){
 
-// ================= TELEGRAM =================
+provider.on("error",(err)=>{
+
+console.log("⚠ Provider error:",err.message);
+
+if(reconnecting) return;
+
+if(
+err.message.includes("filter") ||
+err.message.includes("timeout") ||
+err.message.includes("connection")
+){
+
+reconnecting = true;
+
+console.log("🔄 Reconnecting RPC...");
+
+setTimeout(async()=>{
+
+await reconnect();
+
+reconnecting = false;
+
+},8000);
+
+}
+
+});
+
+}
+
+// ================= RECONNECT =================
+
+async function reconnect(){
+
+console.log("🔁 Creating new provider...");
+
+createProvider();
+
+startListener();
+
+}
+
+// ================= TELEGRAM SEND =================
 
 async function send(tx){
 
@@ -221,41 +270,6 @@ console.log("Listener error:",err.message);
 
 }
 
-// ================= RECONNECT =================
-
-async function reconnect(){
-
-console.log("🔄 Reconnecting RPC...");
-
-provider = new ethers.JsonRpcProvider(RPC);
-
-provider.polling = true;
-provider.pollingInterval = 7000;
-
-contract = new ethers.Contract(
-USDT,
-ABI,
-provider
-);
-
-startListener();
-
-}
-
-// ================= PROVIDER ERROR =================
-
-provider.on("error",(err)=>{
-
-console.log("⚠ Provider error:",err.message);
-
-setTimeout(()=>{
-
-reconnect();
-
-},5000);
-
-});
-
 // ================= HEARTBEAT =================
 
 setInterval(async()=>{
@@ -268,7 +282,21 @@ await provider.getBlockNumber();
 
 console.log("⚠ RPC heartbeat failed");
 
-reconnect();
+if(!reconnecting){
+
+reconnecting = true;
+
+console.log("🔄 Reconnecting RPC...");
+
+setTimeout(async()=>{
+
+await reconnect();
+
+reconnecting = false;
+
+},8000);
+
+}
 
 }
 
@@ -277,6 +305,11 @@ reconnect();
 // ================= START =================
 
 (async()=>{
+
+console.log("👀 Wallet watcher started");
+console.log("Watching:",WATCH);
+
+createProvider();
 
 await loadLast5();
 
