@@ -3,7 +3,8 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const TelegramBot = require("node-telegram-bot-api");
 
-// ENV
+// ================= ENV =================
+
 const RPC = process.env.RPC_WALLET;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
@@ -14,13 +15,15 @@ process.exit(1);
 }
 
 const provider = new ethers.JsonRpcProvider(RPC);
-const bot = new TelegramBot(TELEGRAM_TOKEN,{polling:false});
+const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
-// WATCH WALLET
+// ================= WATCH ADDRESS =================
+
 const WATCH =
 "0xc8bcf348a74018b11dcb52765bd818e85fbe6a3f".toLowerCase();
 
-// USDT
+// ================= USDT =================
+
 const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
 
@@ -32,8 +35,8 @@ let sent = new Set();
 console.log("👀 Wallet watcher started");
 console.log("Wallet:",WATCH);
 
+// ================= TELEGRAM =================
 
-// TELEGRAM
 async function send(tx){
 
 const msg = `
@@ -55,39 +58,46 @@ ${tx.to}
 
 try{
 await bot.sendMessage(CHANNEL_ID,msg);
-console.log("📤 Sent:",tx.amount);
+console.log("📤 Sent:",tx.amount,"USDT");
 }catch(e){
 console.log("Telegram error:",e.message);
 }
 
 }
 
+// ================= BLOCK SCANNER =================
 
-// SCAN BLOCKS
 async function scan(){
 
 try{
 
 const current = await provider.getBlockNumber();
 
+// FIRST START → scan last 200 blocks (~10 min)
+
 if(lastBlock === 0){
 
-lastBlock = current - 100;
+lastBlock = current - 200;
+
 console.log("📦 Loading past transactions...");
 
 }
 
 if(current <= lastBlock) return;
 
-for(let block = lastBlock + 1; block <= current; block++){
+for(let blockNumber = lastBlock + 1; blockNumber <= current; blockNumber++){
 
-const blockData = await provider.getBlockWithTransactions(block);
+const block = await provider.getBlock(blockNumber,true);
 
-console.log("📡 Block:",block);
+console.log("📡 Block:",blockNumber);
 
-for(const tx of blockData.transactions){
+for(const tx of block.transactions){
+
+if(!tx.to) continue;
 
 const receipt = await provider.getTransactionReceipt(tx.hash);
+
+if(!receipt) continue;
 
 for(const log of receipt.logs){
 
@@ -111,7 +121,7 @@ const amount = Number(
 ethers.formatUnits(value,DECIMALS)
 );
 
-console.log("💰 Deposit:",amount);
+console.log("💰 Deposit detected:",amount,"USDT");
 
 await send({
 from,
@@ -130,18 +140,18 @@ sent.clear();
 
 }
 
-lastBlock = block;
+lastBlock = blockNumber;
 
 }
 
 }catch(err){
 
-console.log("scan error:",err.message);
+console.log("❌ scan error:",err.message);
 
 }
 
 }
 
+// ================= LOOP =================
 
-// LOOP
 setInterval(scan,4000);
