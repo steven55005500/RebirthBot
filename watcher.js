@@ -197,6 +197,32 @@ console.log("Telegram Error:",err.message);
 
 }
 
+
+async function safeReload(page){
+
+while(true){
+
+try{
+
+await page.reload({
+waitUntil:"domcontentloaded",
+timeout:60000
+});
+
+return;
+
+}catch(err){
+
+console.log("Site unreachable → retrying in 15 seconds");
+
+await new Promise(r=>setTimeout(r,15000));
+
+}
+
+}
+
+}
+
 // ==============================
 // MAIN WATCHER
 // ==============================
@@ -241,10 +267,7 @@ setInterval(async()=>{
 
 try{
 
-await page.reload({
-waitUntil:"domcontentloaded",
-timeout:0
-});
+await safeReload(page);
 
 await new Promise(r=>setTimeout(r,3000));
 
