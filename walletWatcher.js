@@ -10,20 +10,20 @@ const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-  console.log("❌ Missing ENV values");
-  process.exit(1);
+console.log("❌ Missing ENV values");
+process.exit(1);
 }
 
 // ================= PROVIDER =================
 
-const provider = new ethers.JsonRpcProvider(RPC);
+let provider = new ethers.JsonRpcProvider(RPC);
 
 provider.polling = true;
-provider.pollingInterval = 4000;
+provider.pollingInterval = 7000;
 
 // ================= TELEGRAM =================
 
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
+const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
 // ================= WATCH WALLET =================
 
@@ -44,7 +44,9 @@ const ABI = [
 "event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
 
-const contract = new ethers.Contract(
+// ================= CONTRACT =================
+
+let contract = new ethers.Contract(
 USDT,
 ABI,
 provider
@@ -55,7 +57,7 @@ provider
 let sent = new Set();
 
 console.log("👀 Wallet watcher started");
-console.log("Watching:", WATCH);
+console.log("Watching:",WATCH);
 
 // ================= TELEGRAM =================
 
@@ -104,17 +106,17 @@ try{
 
 const currentBlock = await provider.getBlockNumber();
 
-const fromBlock = currentBlock - 500;
+const fromBlock = currentBlock - 120;
 
 const transferTopic =
 ethers.id("Transfer(address,address,uint256)");
 
 const logs = await provider.getLogs({
 
-address: USDT,
-fromBlock: fromBlock,
-toBlock: currentBlock,
-topics: [transferTopic]
+address:USDT,
+fromBlock:fromBlock,
+toBlock:currentBlock,
+topics:[transferTopic]
 
 });
 
@@ -130,6 +132,8 @@ const parsed = contract.interface.parseLog(log);
 
 const from = parsed.args.from;
 const to = parsed.args.to;
+
+if(!to) continue;
 
 if(to.toLowerCase() !== WATCH) continue;
 
@@ -166,7 +170,7 @@ console.log("Past scan error:",err.message);
 
 }
 
-// ================= LIVE LISTENER =================
+// ================= LISTENER =================
 
 function startListener(){
 
@@ -174,7 +178,7 @@ console.log("🎧 Live listener started");
 
 contract.removeAllListeners();
 
-contract.on("Transfer", async (from,to,value,event)=>{
+contract.on("Transfer",async(from,to,value,event)=>{
 
 try{
 
@@ -203,8 +207,7 @@ hash
 
 sent.add(hash);
 
-// memory clean
-if(sent.size > 500){
+if(sent.size > 1000){
 sent.clear();
 }
 
@@ -218,41 +221,44 @@ console.log("Listener error:",err.message);
 
 }
 
-// ================= AUTO RECOVERY =================
+// ================= RECONNECT =================
+
+async function reconnect(){
+
+console.log("🔄 Reconnecting RPC...");
+
+provider = new ethers.JsonRpcProvider(RPC);
+
+provider.polling = true;
+provider.pollingInterval = 7000;
+
+contract = new ethers.Contract(
+USDT,
+ABI,
+provider
+);
+
+startListener();
+
+}
+
+// ================= PROVIDER ERROR =================
 
 provider.on("error",(err)=>{
 
 console.log("⚠ Provider error:",err.message);
 
-restart();
+setTimeout(()=>{
+
+reconnect();
+
+},5000);
 
 });
 
-// ================= RESTART =================
-
-let restarting = false;
-
-function restart(){
-
-if(restarting) return;
-
-restarting = true;
-
-console.log("🔄 Restarting listener...");
-
-setTimeout(()=>{
-
-startListener();
-
-restarting = false;
-
-},3000);
-
-}
-
 // ================= HEARTBEAT =================
 
-setInterval(async ()=>{
+setInterval(async()=>{
 
 try{
 
@@ -262,11 +268,11 @@ await provider.getBlockNumber();
 
 console.log("⚠ RPC heartbeat failed");
 
-restart();
+reconnect();
 
 }
 
-},20000);
+},30000);
 
 // ================= START =================
 
