@@ -25,9 +25,12 @@ const WATCH =
 // ================= USDT =================
 
 const USDT =
-"0x55d398326f99059ff775485246999027b3197955";
+"0x55d398326f99059ff775485246999027b3197955".toLowerCase();
 
 const DECIMALS = 18;
+
+const TRANSFER_TOPIC =
+ethers.id("Transfer(address,address,uint256)");
 
 let lastBlock = 0;
 let sent = new Set();
@@ -66,11 +69,68 @@ console.log("Telegram error:",e.message);
 
 }
 
+// ================= LOAD LAST 5 =================
+
+async function loadLast5(){
+
+console.log("📦 Loading last deposits...");
+
+const current = await provider.getBlockNumber();
+
+let found = 0;
+
+for(let blockNumber = current-40; blockNumber <= current; blockNumber++){
+
+const block = await provider.getBlock(blockNumber,true);
+
+for(const tx of block.transactions){
+
+if(found >= 5) return;
+
+const receipt = await provider.getTransactionReceipt(tx.hash);
+if(!receipt) continue;
+
+for(const log of receipt.logs){
+
+if(log.address.toLowerCase() !== USDT) continue;
+
+if(log.topics[0] !== TRANSFER_TOPIC) continue;
+
+const from = "0x"+log.topics[1].slice(26);
+const to = "0x"+log.topics[2].slice(26);
+
+if(to.toLowerCase() !== WATCH) continue;
+
+const value = ethers.getBigInt(log.data);
+
+const amount = Number(
+ethers.formatUnits(value,DECIMALS)
+);
+
+await send({
+from,
+to,
+amount,
+hash:tx.hash
+});
+
+sent.add(tx.hash);
+
+found++;
+
+}
+
+}
+
+}
+
+}
+
 // ================= BLOCK SCANNER =================
 
 async function scan(){
 
-if(scanning) return;   // 🔒 prevent duplicate scan
+if(scanning) return;
 scanning = true;
 
 try{
@@ -79,8 +139,7 @@ const current = await provider.getBlockNumber();
 
 if(lastBlock === 0){
 
-lastBlock = current - 50; // past ~3 min
-console.log("📦 Loading past transactions...");
+lastBlock = current - 3;
 
 }
 
@@ -97,8 +156,6 @@ const block = await provider.getBlock(blockNumber,true);
 
 for(const tx of block.transactions){
 
-if(!tx.to) continue;
-
 const receipt = await provider.getTransactionReceipt(tx.hash);
 if(!receipt) continue;
 
@@ -106,16 +163,12 @@ for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
 
-if(log.topics[0] !== ethers.id("Transfer(address,address,uint256)"))
-continue;
+if(log.topics[0] !== TRANSFER_TOPIC) continue;
 
 const from = "0x"+log.topics[1].slice(26);
 const to = "0x"+log.topics[2].slice(26);
 
-if(
-from.toLowerCase() !== WATCH &&
-to.toLowerCase() !== WATCH
-) continue;
+if(to.toLowerCase() !== WATCH) continue;
 
 if(sent.has(tx.hash)) continue;
 
@@ -154,6 +207,12 @@ scanning = false;
 
 }
 
-// ================= LOOP =================
+// ================= START =================
+
+(async()=>{
+
+await loadLast5();
 
 setInterval(scan,4000);
+
+})();
