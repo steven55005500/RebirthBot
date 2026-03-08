@@ -16,9 +16,7 @@ process.exit(1);
 
 // ================= PROVIDER =================
 
-const provider = new ethers.JsonRpcProvider(RPC,{
-staticNetwork:true
-});
+const provider = new ethers.JsonRpcProvider(RPC);
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
