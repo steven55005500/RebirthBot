@@ -5,25 +5,29 @@ const TelegramBot = require("node-telegram-bot-api");
 
 // ================= ENV =================
 
-const RPC = process.env.RPC;
+const RPC = process.env.RPC_WALLET;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-console.log("❌ Missing ENV values");
-process.exit(1);
+    console.log("❌ Missing ENV values");
+    process.exit(1);
 }
 
+const provider = new ethers.JsonRpcProvider(RPC);
 // ================= PROVIDER =================
 
-const provider = new ethers.JsonRpcProvider(RPC);
+ 
+provider.pollingInterval = 4000; // reduce RPC spam
+
+// ================= TELEGRAM =================
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
 // ================= WALLET =================
 
 const WATCH_ADDRESS =
-"0xc8Bcf348A74018B11DCB52765Bd818E85FBE6A3f".toLowerCase();
+"0xc8bcf348a74018b11dcb52765bd818e85fbe6a3f".toLowerCase();
 
 // ================= USDT =================
 
@@ -36,7 +40,9 @@ const ABI = [
 
 const contract = new ethers.Contract(USDT,ABI,provider);
 
-const DECIMALS = 6;
+const DECIMALS = 18;
+
+// ================= MEMORY =================
 
 let sent = new Set();
 
@@ -80,80 +86,14 @@ console.log("Telegram error:",err.message);
 
 }
 
-// ================= LOAD LAST 5 =================
-
-async function loadLastTransactions(){
-
-console.log("🔎 Loading last 5 wallet transactions...");
-
-try{
-
-const current = await provider.getBlockNumber();
-
-// small range to avoid RPC rate limit
-const fromBlock = current - 500;
-
-const logs = await provider.getLogs({
-
-address:USDT,
-fromBlock:fromBlock,
-toBlock:current,
-topics:[ethers.id("Transfer(address,address,uint256)")]
-
-});
-
-let found = [];
-
-for(const log of logs){
-
-try{
-
-const parsed = contract.interface.parseLog(log);
-
-const from = parsed.args.from.toLowerCase();
-const to = parsed.args.to.toLowerCase();
-
-if(from !== WATCH_ADDRESS && to !== WATCH_ADDRESS) continue;
-
-const amount = Number(
-ethers.formatUnits(parsed.args.value,DECIMALS)
-);
-
-found.push({
-hash:log.transactionHash,
-from,
-to,
-amount
-});
-
-}catch(e){}
-
-}
-
-found = found.slice(-5);
-
-for(const tx of found){
-
-await sendTelegram(tx);
-sent.add(tx.hash);
-
-}
-
-console.log("✅ Last transactions loaded");
-
-}catch(err){
-
-console.log("⚠ Past scan error:",err.message);
-
-}
-
-}
-
-// ================= LIVE WATCH =================
+// ================= LISTENER =================
 
 function startListener(){
 
 console.log("🎧 Live wallet monitoring started");
+
+
+contract.removeAllListeners();
 
 contract.on("Transfer",async(from,to,value,event)=>{
 
@@ -185,6 +125,11 @@ await sendTelegram(tx);
 
 sent.add(hash);
 
+// limit memory
+if(sent.size > 5000){
+sent.clear();
+}
+
 }catch(err){
 
 console.log("Listener error:",err.message);
@@ -202,17 +147,24 @@ provider.on("error",(err)=>{
 console.log("⚠ RPC Error:",err.message);
 console.log("Reconnecting listener...");
 
+try{
 contract.removeAllListeners();
-setTimeout(startListener,3000);
+}catch(e){}
 
+setTimeout(startListener,5000);
+
+});
+
+// ================= GLOBAL ERROR =================
+
+process.on("uncaughtException",(err)=>{
+console.log("Uncaught Error:",err.message);
+});
+
+process.on("unhandledRejection",(err)=>{
+console.log("Unhandled Promise:",err);
 });
 
 // ================= START =================
 
-(async()=>{
-
-await loadLastTransactions();
-
 startListener();
-
-})();
