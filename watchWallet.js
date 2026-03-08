@@ -3,24 +3,27 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const TelegramBot = require("node-telegram-bot-api");
 
-// ENV
+// ================= ENV =================
+
 const RPC = process.env.RPC_WALLET;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
-if(!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID){
+if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 console.log("❌ Missing ENV values");
 process.exit(1);
 }
 
 const provider = new ethers.JsonRpcProvider(RPC);
-const bot = new TelegramBot(TELEGRAM_TOKEN,{polling:false});
+const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
-// WATCH ADDRESS
+// ================= WATCH ADDRESS =================
+
 const WATCH =
 "0xc8bcf348a74018b11dcb52765bd818e85fbe6a3f".toLowerCase();
 
-// USDT
+// ================= USDT =================
+
 const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
 
@@ -32,7 +35,8 @@ let sent = new Set();
 console.log("👀 Wallet watcher started");
 console.log("Wallet:",WATCH);
 
-// TELEGRAM
+// ================= TELEGRAM =================
+
 async function send(tx){
 
 const msg = `
@@ -54,28 +58,38 @@ ${tx.to}
 
 try{
 await bot.sendMessage(CHANNEL_ID,msg);
-console.log("📤 Sent:",tx.amount);
+console.log("📤 Sent:",tx.amount,"USDT");
 }catch(e){
 console.log("Telegram error:",e.message);
 }
 
 }
 
-// BLOCK SCANNER
+// ================= BLOCK SCANNER =================
+
 async function scan(){
 
 try{
 
 const current = await provider.getBlockNumber();
 
-// FIRST START → scan last 20 blocks
+console.log("🔎 Checking block:",current);
+
+// FIRST START → scan last 1000 blocks (~50 min history)
+
 if(lastBlock === 0){
-lastBlock = current - 20;
+
+lastBlock = current - 1000;
+
+console.log("📦 Loading past transactions...");
+
 }
 
 for(let i = lastBlock + 1; i <= current; i++){
 
 const block = await provider.getBlock(i,true);
+
+console.log("📡 Scanning block:",i);
 
 for(const tx of block.transactions){
 
@@ -87,9 +101,7 @@ for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
 
-if(log.topics[0] !==
-ethers.id("Transfer(address,address,uint256)"))
-continue;
+if(log.topics[0] !== ethers.id("Transfer(address,address,uint256)")) continue;
 
 const from = "0x"+log.topics[1].slice(26);
 const to = "0x"+log.topics[2].slice(26);
@@ -103,8 +115,11 @@ if(sent.has(tx.hash)) continue;
 
 const value = ethers.getBigInt(log.data);
 
-const amount =
-Number(ethers.formatUnits(value,DECIMALS));
+const amount = Number(
+ethers.formatUnits(value,DECIMALS)
+);
+
+console.log("💰 Deposit detected:",amount,"USDT");
 
 await send({
 from,
@@ -129,11 +144,12 @@ lastBlock = current;
 
 }catch(err){
 
-console.log("scan error:",err.message);
+console.log("❌ scan error:",err.message);
 
 }
 
 }
 
-// LOOP
+// ================= LOOP =================
+
 setInterval(scan,4000);
