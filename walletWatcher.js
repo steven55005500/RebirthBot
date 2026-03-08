@@ -34,6 +34,7 @@ const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
 
 const DECIMALS = 18;
+const MIN_AMOUNT = 1; // 🔥 Minimum $1 filter
 
 // ================= ABI =================
 
@@ -58,7 +59,7 @@ console.log("Watching:",WATCH);
 
 async function send(tx){
 
-const msg = `
+const message = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
@@ -74,11 +75,12 @@ ${tx.to}
 https://bscscan.com/tx/${tx.hash}
 
 ━━━━━━━━━━━━━━━━━━
+🎉 Successful Deposit Confirmed
 `;
 
 try{
 
-await bot.sendMessage(CHANNEL_ID,msg);
+await bot.sendMessage(CHANNEL_ID,message);
 
 console.log("📤 Sent:",tx.amount);
 
@@ -133,6 +135,9 @@ const amount = Number(
 ethers.formatUnits(parsed.args.value,DECIMALS)
 );
 
+// 🔥 Minimum filter
+if(amount < MIN_AMOUNT) continue;
+
 const hash = log.transactionHash;
 
 await send({
@@ -170,13 +175,16 @@ try{
 
 if(to.toLowerCase() !== WATCH) return;
 
-const hash = event.log.transactionHash;
-
-if(sent.has(hash)) return;
-
 const amount = Number(
 ethers.formatUnits(value,DECIMALS)
 );
+
+// 🔥 Minimum filter
+if(amount < MIN_AMOUNT) return;
+
+const hash = event.log.transactionHash;
+
+if(sent.has(hash)) return;
 
 console.log("💰 Deposit detected:",amount);
 
