@@ -73,6 +73,82 @@ return true;
 
 }
 
+
+// ================= PAST SCAN =================
+
+// ================= PAST SCAN =================
+
+async function scanPastDeposits(){
+
+console.log("🔎 Scanning last 15 minutes deposits...");
+
+try{
+
+const currentBlock = await provider.getBlockNumber();
+
+// BSC ≈ 3 sec per block → ~300 blocks ≈ 15 minutes
+const fromBlock = currentBlock - 300;
+
+const transferTopic = ethers.id(
+"Transfer(address,address,uint256)"
+);
+
+const logs = await provider.getLogs({
+address: USDT_CONTRACT,
+fromBlock: fromBlock,
+toBlock: currentBlock,
+topics: [transferTopic]
+});
+
+for(const log of logs){
+
+try{
+
+const parsed = contract.interface.parseLog(log);
+
+const from = parsed.args.from;
+const to = parsed.args.to.toLowerCase();
+
+const amount = Number(
+ethers.formatUnits(parsed.args.value,DECIMALS)
+);
+
+const hash = log.transactionHash;
+
+if(sentHashes.has(hash)) continue;
+
+// only WATCH WALLET past deposits
+if(to === WATCH_ADDRESS){
+
+console.log("📦 Past Deposit Found:",amount);
+
+txQueue.push({
+from,
+to,
+amount,
+hash
+});
+
+sentHashes.add(hash);
+
+}
+
+}catch(e){
+console.log("Parse error:",e.message);
+}
+
+}
+
+console.log("✅ Past scan completed");
+
+}catch(err){
+
+console.log("Past scan error:",err.message);
+
+}
+
+}
+
 // ================= LISTENER =================
 
 function startListener(){
@@ -226,7 +302,12 @@ console.log("Send Error:",err.message);
 }
 
 // ================= START =================
+(async () => {
 
-startListener();
+await scanPastDeposits(); // 15 min old tx
+
+startListener(); // live tx
 
 senderLoop();
+
+})();
