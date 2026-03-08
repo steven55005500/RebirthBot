@@ -61,6 +61,9 @@ let sentHashes = new Set();
 
 function isValidAmount(amount){
 
+if(!isValidAmount(amount)) return;
+
+
 if(amount < 30) return false;
 
 if(amount > 150) return false;
