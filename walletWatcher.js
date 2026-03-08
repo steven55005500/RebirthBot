@@ -35,15 +35,13 @@ function createProvider(rpc){
 
 const ws = new ethers.WebSocketProvider(rpc);
 
-ws._websocket.on("close",()=>{
-console.log("⚠ WebSocket closed");
-setTimeout(()=>{
-startProvider();
-},3000);
+ws.on("error",(err)=>{
+console.log("⚠ WebSocket error:",err.message);
 });
 
-ws._websocket.on("error",(err)=>{
-console.log("⚠ WebSocket error:",err.message);
+ws.on("close",()=>{
+console.log("⚠ WebSocket closed, reconnecting...");
+setTimeout(startProvider,3000);
 });
 
 return ws;
