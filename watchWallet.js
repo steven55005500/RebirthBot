@@ -14,7 +14,11 @@ console.log("❌ Missing ENV values");
 process.exit(1);
 }
 
-const provider = new ethers.JsonRpcProvider(RPC);
+// ================= PROVIDER =================
+
+const provider = new ethers.JsonRpcProvider(RPC,{
+staticNetwork:true
+});
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
@@ -84,13 +88,18 @@ async function loadLastTransactions(){
 
 console.log("🔎 Loading last 5 wallet transactions...");
 
+try{
+
 const current = await provider.getBlockNumber();
+
+// small range to avoid RPC rate limit
+const fromBlock = current - 500;
 
 const logs = await provider.getLogs({
 
 address:USDT,
-fromBlock:current-8000,
-toBlock:"latest",
+fromBlock:fromBlock,
+toBlock:current,
 topics:[ethers.id("Transfer(address,address,uint256)")]
 
 });
@@ -113,12 +122,10 @@ ethers.formatUnits(parsed.args.value,DECIMALS)
 );
 
 found.push({
-
 hash:log.transactionHash,
 from,
 to,
 amount
-
 });
 
 }catch(e){}
@@ -130,12 +137,17 @@ found = found.slice(-5);
 for(const tx of found){
 
 await sendTelegram(tx);
-
 sent.add(tx.hash);
 
 }
 
 console.log("✅ Last transactions loaded");
+
+}catch(err){
+
+console.log("⚠ Past scan error:",err.message);
+
+}
 
 }
 
@@ -165,12 +177,10 @@ ethers.formatUnits(value,DECIMALS)
 );
 
 const tx = {
-
 from,
 to,
 amount,
 hash
-
 };
 
 await sendTelegram(tx);
@@ -186,6 +196,18 @@ console.log("Listener error:",err.message);
 });
 
 }
+
+// ================= AUTO RECONNECT =================
+
+provider.on("error",(err)=>{
+
+console.log("⚠ RPC Error:",err.message);
+console.log("Reconnecting listener...");
+
+contract.removeAllListeners();
+setTimeout(startListener,3000);
+
+});
 
 // ================= START =================
 
