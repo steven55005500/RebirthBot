@@ -63,7 +63,7 @@ function isValidAmount(amount){
 
 if(amount < 30) return false;
 
-if(amount > 900) return false;
+if(amount > 150) return false;
 
 if(amount % 30 !== 0) return false;
 
