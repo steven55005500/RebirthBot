@@ -10,18 +10,20 @@ const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-console.log("❌ Missing ENV values");
-process.exit(1);
+  console.log("❌ Missing ENV values");
+  process.exit(1);
 }
 
 // ================= PROVIDER =================
 
 const provider = new ethers.JsonRpcProvider(RPC);
+
+provider.polling = true;
 provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
 
-const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 
 // ================= WATCH WALLET =================
 
@@ -34,7 +36,7 @@ const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
 
 const DECIMALS = 18;
-const MIN_AMOUNT = 1; // 🔥 Minimum $1 filter
+const MIN_AMOUNT = 1;
 
 // ================= ABI =================
 
@@ -53,7 +55,7 @@ provider
 let sent = new Set();
 
 console.log("👀 Wallet watcher started");
-console.log("Watching:",WATCH);
+console.log("Watching:", WATCH);
 
 // ================= TELEGRAM =================
 
@@ -92,7 +94,7 @@ console.log("Telegram error:",e.message);
 
 }
 
-// ================= LAST 5 SCAN =================
+// ================= LAST SCAN =================
 
 async function loadLast5(){
 
@@ -102,7 +104,7 @@ try{
 
 const currentBlock = await provider.getBlockNumber();
 
-const fromBlock = currentBlock - 400;
+const fromBlock = currentBlock - 500;
 
 const transferTopic =
 ethers.id("Transfer(address,address,uint256)");
@@ -135,10 +137,11 @@ const amount = Number(
 ethers.formatUnits(parsed.args.value,DECIMALS)
 );
 
-// 🔥 Minimum filter
 if(amount < MIN_AMOUNT) continue;
 
 const hash = log.transactionHash;
+
+if(sent.has(hash)) continue;
 
 await send({
 from,
@@ -169,9 +172,13 @@ function startListener(){
 
 console.log("🎧 Live listener started");
 
-contract.on("Transfer",async(from,to,value,event)=>{
+contract.removeAllListeners();
+
+contract.on("Transfer", async (from,to,value,event)=>{
 
 try{
+
+if(!to) return;
 
 if(to.toLowerCase() !== WATCH) return;
 
@@ -179,7 +186,6 @@ const amount = Number(
 ethers.formatUnits(value,DECIMALS)
 );
 
-// 🔥 Minimum filter
 if(amount < MIN_AMOUNT) return;
 
 const hash = event.log.transactionHash;
@@ -197,6 +203,11 @@ hash
 
 sent.add(hash);
 
+// memory clean
+if(sent.size > 500){
+sent.clear();
+}
+
 }catch(err){
 
 console.log("Listener error:",err.message);
@@ -207,23 +218,55 @@ console.log("Listener error:",err.message);
 
 }
 
-// ================= PROVIDER ERROR FIX =================
+// ================= AUTO RECOVERY =================
 
 provider.on("error",(err)=>{
 
 console.log("⚠ Provider error:",err.message);
 
-if(err.message.includes("filter not found")){
+restart();
 
-console.log("🔄 Restarting listener");
+});
 
-contract.removeAllListeners();
+// ================= RESTART =================
+
+let restarting = false;
+
+function restart(){
+
+if(restarting) return;
+
+restarting = true;
+
+console.log("🔄 Restarting listener...");
+
+setTimeout(()=>{
 
 startListener();
 
+restarting = false;
+
+},3000);
+
 }
 
-});
+// ================= HEARTBEAT =================
+
+setInterval(async ()=>{
+
+try{
+
+await provider.getBlockNumber();
+
+}catch(e){
+
+console.log("⚠ RPC heartbeat failed");
+
+restart();
+
+}
+
+},20000);
 
 // ================= START =================
 
