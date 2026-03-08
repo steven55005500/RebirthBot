@@ -29,11 +29,12 @@ const MIN_AMOUNT = 1;
 
 // ================= PROVIDER =================
 
+// ================= PROVIDER =================
+
 const provider = new ethers.WebSocketProvider(RPC);
 
-provider._websocket.on("close", () => {
-console.log("⚠ WebSocket closed. Restarting bot...");
-process.exit(1);
+provider.on("error",(err)=>{
+console.log("⚠ Provider error:",err.message);
 });
 
  
