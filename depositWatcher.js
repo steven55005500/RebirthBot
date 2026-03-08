@@ -47,7 +47,7 @@ console.log("🔥 Rebirth Deposit Scanner Started");
 
 // ================= SETTINGS =================
 
-const DECIMALS = 6;
+const DECIMALS = 18;
 
 let txQueue = [];
 
