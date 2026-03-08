@@ -31,6 +31,7 @@ const DECIMALS = 18;
 
 let lastBlock = 0;
 let sent = new Set();
+let scanning = false;
 
 console.log("👀 Wallet watcher started");
 console.log("Wallet:",WATCH);
@@ -69,41 +70,44 @@ console.log("Telegram error:",e.message);
 
 async function scan(){
 
+if(scanning) return;   // 🔒 prevent duplicate scan
+scanning = true;
+
 try{
 
 const current = await provider.getBlockNumber();
 
-// FIRST START → scan last 200 blocks (~10 min)
-
 if(lastBlock === 0){
 
-lastBlock = current - 200;
-
+lastBlock = current - 50; // past ~3 min
 console.log("📦 Loading past transactions...");
 
 }
 
-if(current <= lastBlock) return;
+if(current <= lastBlock){
+scanning = false;
+return;
+}
 
 for(let blockNumber = lastBlock + 1; blockNumber <= current; blockNumber++){
 
-const block = await provider.getBlock(blockNumber,true);
-
 console.log("📡 Block:",blockNumber);
+
+const block = await provider.getBlock(blockNumber,true);
 
 for(const tx of block.transactions){
 
 if(!tx.to) continue;
 
 const receipt = await provider.getTransactionReceipt(tx.hash);
-
 if(!receipt) continue;
 
 for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
 
-if(log.topics[0] !== ethers.id("Transfer(address,address,uint256)")) continue;
+if(log.topics[0] !== ethers.id("Transfer(address,address,uint256)"))
+continue;
 
 const from = "0x"+log.topics[1].slice(26);
 const to = "0x"+log.topics[2].slice(26);
@@ -121,7 +125,7 @@ const amount = Number(
 ethers.formatUnits(value,DECIMALS)
 );
 
-console.log("💰 Deposit detected:",amount,"USDT");
+console.log("💰 Deposit detected:",amount);
 
 await send({
 from,
@@ -131,10 +135,6 @@ hash:tx.hash
 });
 
 sent.add(tx.hash);
-
-if(sent.size > 5000){
-sent.clear();
-}
 
 }
 
@@ -149,6 +149,8 @@ lastBlock = blockNumber;
 console.log("❌ scan error:",err.message);
 
 }
+
+scanning = false;
 
 }
 
