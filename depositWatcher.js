@@ -14,10 +14,7 @@ console.log("❌ Missing ENV values");
 process.exit(1);
 }
 
-// ================= ADDRESSES =================
-
-const WATCH_ADDRESS =
-"0xc8Bcf348A74018B11DCB52765Bd818E85FBE6A3f".toLowerCase();
+// ================= CONTRACT =================
 
 const USDT_CONTRACT =
 "0x55d398326f99059ff775485246999027b3197955";
@@ -30,7 +27,7 @@ provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
 
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling:false });
+const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
 
 // ================= ABI =================
 
@@ -47,11 +44,10 @@ provider
 );
 
 console.log("🔥 Rebirth Deposit Scanner Started");
-console.log("👀 Watching:",WATCH_ADDRESS);
 
 // ================= SETTINGS =================
 
-const DECIMALS = 18;
+const DECIMALS = 6;
 
 let txQueue = [];
 
@@ -60,8 +56,6 @@ let sentHashes = new Set();
 // ================= FILTER =================
 
 function isValidAmount(amount){
-
- 
 
 if(amount < 30) return false;
 
@@ -73,9 +67,6 @@ return true;
 
 }
 
-
-// ================= PAST SCAN =================
-
 // ================= PAST SCAN =================
 
 async function scanPastDeposits(){
@@ -86,7 +77,6 @@ try{
 
 const currentBlock = await provider.getBlockNumber();
 
-// BSC ≈ 3 sec per block → ~300 blocks ≈ 15 minutes
 const fromBlock = currentBlock - 300;
 
 const transferTopic = ethers.id(
@@ -107,7 +97,7 @@ try{
 const parsed = contract.interface.parseLog(log);
 
 const from = parsed.args.from;
-const to = parsed.args.to.toLowerCase();
+const to = parsed.args.to;
 
 const amount = Number(
 ethers.formatUnits(parsed.args.value,DECIMALS)
@@ -117,10 +107,9 @@ const hash = log.transactionHash;
 
 if(sentHashes.has(hash)) continue;
 
-// only WATCH WALLET past deposits
-if(to === WATCH_ADDRESS){
+if(isValidAmount(amount)){
 
-console.log("📦 Past Deposit Found:",amount);
+console.log("📦 Past Valid Deposit:",amount);
 
 txQueue.push({
 from,
@@ -163,36 +152,13 @@ const amount = Number(
 ethers.formatUnits(value,DECIMALS)
 );
 
-const toAddress = to.toLowerCase();
-
 const hash = event.log.transactionHash;
 
 if(sentHashes.has(hash)) return;
 
 console.log(
-"TX:",from,"→",toAddress,"Amount:",amount
+"TX:",from,"→",to,"Amount:",amount
 );
-
-// WATCH WALLET
-
-if(toAddress === WATCH_ADDRESS){
-
-console.log("✅ Deposit to WATCH WALLET");
-
-txQueue.push({
-from,
-to,
-amount,
-hash
-});
-
-sentHashes.add(hash);
-
-return;
-
-}
-
-// GLOBAL VALID TRANSFERS
 
 if(isValidAmount(amount)){
 
@@ -237,12 +203,12 @@ startListener();
 
 });
 
-// ================= RANDOM =================
+// ================= RANDOM DELAY =================
 
 function randomDelay(){
 
-const min = 2 * 60 * 1000; // 2 minutes
-const max = 5 * 60 * 1000; // 5 minutes
+const min = 2 * 60 * 1000;
+const max = 5 * 60 * 1000;
 
 return Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -302,11 +268,12 @@ console.log("Send Error:",err.message);
 }
 
 // ================= START =================
+
 (async () => {
 
-await scanPastDeposits(); // 15 min old tx
+await scanPastDeposits();
 
-startListener(); // live tx
+startListener();
 
 senderLoop();
 
