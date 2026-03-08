@@ -43,14 +43,14 @@ let reconnecting = false;
 
 let sent = new Set();
 
-// ================= PROVIDER INIT =================
+// ================= PROVIDER =================
 
 function createProvider(){
 
 provider = new ethers.JsonRpcProvider(RPC);
 
 provider.polling = true;
-provider.pollingInterval = 7000;
+provider.pollingInterval = 9000;
 
 attachProviderEvents();
 
@@ -108,7 +108,7 @@ startListener();
 
 }
 
-// ================= TELEGRAM SEND =================
+// ================= TELEGRAM =================
 
 async function send(tx){
 
@@ -145,7 +145,7 @@ console.log("Telegram error:",e.message);
 
 }
 
-// ================= LAST SCAN =================
+// ================= LAST 5 SCAN =================
 
 async function loadLast5(){
 
@@ -155,17 +155,20 @@ try{
 
 const currentBlock = await provider.getBlockNumber();
 
-const fromBlock = currentBlock - 120;
+const fromBlock = currentBlock - 200;
 
-const transferTopic =
-ethers.id("Transfer(address,address,uint256)");
+const transferTopic = ethers.id("Transfer(address,address,uint256)");
 
 const logs = await provider.getLogs({
 
-address:USDT,
-fromBlock:fromBlock,
-toBlock:currentBlock,
-topics:[transferTopic]
+address: USDT,
+fromBlock: fromBlock,
+toBlock: currentBlock,
+topics: [
+transferTopic,
+null,
+ethers.zeroPadValue(WATCH,32)
+]
 
 });
 
@@ -181,10 +184,6 @@ const parsed = contract.interface.parseLog(log);
 
 const from = parsed.args.from;
 const to = parsed.args.to;
-
-if(!to) continue;
-
-if(to.toLowerCase() !== WATCH) continue;
 
 const amount = Number(
 ethers.formatUnits(parsed.args.value,DECIMALS)
@@ -209,7 +208,7 @@ found++;
 
 }
 
-console.log("✅ Last deposits sent");
+console.log("✅ Last deposits sent:",found);
 
 }catch(err){
 
