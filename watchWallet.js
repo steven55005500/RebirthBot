@@ -79,21 +79,20 @@ const current = await provider.getBlockNumber();
 
 let found = 0;
 
-for(let blockNumber = current-40; blockNumber <= current; blockNumber++){
+for(let blockNumber = current-60; blockNumber <= current; blockNumber++){
 
-const block = await provider.getBlock(blockNumber,true);
+const block = await provider.getBlock(blockNumber);
 
-for(const tx of block.transactions){
+for(const txHash of block.transactions){
 
 if(found >= 5) return;
 
-const receipt = await provider.getTransactionReceipt(tx.hash);
+const receipt = await provider.getTransactionReceipt(txHash);
 if(!receipt) continue;
 
 for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
-
 if(log.topics[0] !== TRANSFER_TOPIC) continue;
 
 const from = "0x"+log.topics[1].slice(26);
@@ -111,10 +110,10 @@ await send({
 from,
 to,
 amount,
-hash:tx.hash
+hash:txHash
 });
 
-sent.add(tx.hash);
+sent.add(txHash);
 
 found++;
 
@@ -138,9 +137,7 @@ try{
 const current = await provider.getBlockNumber();
 
 if(lastBlock === 0){
-
 lastBlock = current - 3;
-
 }
 
 if(current <= lastBlock){
@@ -152,17 +149,16 @@ for(let blockNumber = lastBlock + 1; blockNumber <= current; blockNumber++){
 
 console.log("📡 Block:",blockNumber);
 
-const block = await provider.getBlock(blockNumber,true);
+const block = await provider.getBlock(blockNumber);
 
-for(const tx of block.transactions){
+for(const txHash of block.transactions){
 
-const receipt = await provider.getTransactionReceipt(tx.hash);
+const receipt = await provider.getTransactionReceipt(txHash);
 if(!receipt) continue;
 
 for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
-
 if(log.topics[0] !== TRANSFER_TOPIC) continue;
 
 const from = "0x"+log.topics[1].slice(26);
@@ -170,7 +166,7 @@ const to = "0x"+log.topics[2].slice(26);
 
 if(to.toLowerCase() !== WATCH) continue;
 
-if(sent.has(tx.hash)) continue;
+if(sent.has(txHash)) continue;
 
 const value = ethers.getBigInt(log.data);
 
@@ -184,10 +180,10 @@ await send({
 from,
 to,
 amount,
-hash:tx.hash
+hash:txHash
 });
 
-sent.add(tx.hash);
+sent.add(txHash);
 
 }
 
