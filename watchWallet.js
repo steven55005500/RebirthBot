@@ -15,10 +15,10 @@ if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 }
 
 const provider = new ethers.JsonRpcProvider(RPC);
-// ================= PROVIDER =================
 
- 
-provider.pollingInterval = 4000; // reduce RPC spam
+provider.polling = true;
+provider.pollingInterval = 4000;
+provider._maxInternalBlockNumber = -1;
 
 // ================= TELEGRAM =================
 
@@ -90,10 +90,11 @@ console.log("Telegram error:",err.message);
 
 function startListener(){
 
+contract.removeAllListeners();
+
 console.log("🎧 Live wallet monitoring started");
 
 
-contract.removeAllListeners();
 
 contract.on("Transfer",async(from,to,value,event)=>{
 
@@ -127,7 +128,7 @@ sent.add(hash);
 
 // limit memory
 if(sent.size > 5000){
-sent.clear();
+sent = new Set([...sent].slice(-3000));
 }
 
 }catch(err){
@@ -144,14 +145,15 @@ console.log("Listener error:",err.message);
 
 provider.on("error",(err)=>{
 
-console.log("⚠ RPC Error:",err.message);
-console.log("Reconnecting listener...");
+console.log("⚠ RPC reconnecting...");
 
 try{
 contract.removeAllListeners();
 }catch(e){}
 
-setTimeout(startListener,5000);
+setTimeout(()=>{
+startListener();
+},5000);
 
 });
 
