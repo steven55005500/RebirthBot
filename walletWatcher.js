@@ -25,6 +25,12 @@ const USDT =
 const DECIMALS = 18;
 const MIN_AMOUNT = 1;
 
+// ================= PROVIDER =================
+
+const provider = new ethers.JsonRpcProvider(RPC);
+
+provider.pollingInterval = 7000;
+
 // ================= TELEGRAM =================
 
 const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
@@ -35,80 +41,22 @@ const ABI = [
 "event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
 
-// ================= VARIABLES =================
+// ================= CONTRACT =================
 
-let provider;
-let contract;
-let reconnecting = false;
-
-let sent = new Set();
-
-// ================= PROVIDER =================
-
-function createProvider(){
-
-provider = new ethers.JsonRpcProvider(RPC);
-
-provider.polling = true;
-provider.pollingInterval = 9000;
-
-attachProviderEvents();
-
-contract = new ethers.Contract(
+const contract = new ethers.Contract(
 USDT,
 ABI,
 provider
 );
 
-}
+console.log("👀 Wallet watcher started");
+console.log("Watching:",WATCH);
 
-// ================= PROVIDER EVENTS =================
+// ================= MEMORY =================
 
-function attachProviderEvents(){
+let sent = new Set();
 
-provider.on("error",(err)=>{
-
-console.log("⚠ Provider error:",err.message);
-
-if(reconnecting) return;
-
-if(
-err.message.includes("filter") ||
-err.message.includes("timeout") ||
-err.message.includes("connection")
-){
-
-reconnecting = true;
-
-console.log("🔄 Reconnecting RPC...");
-
-setTimeout(async()=>{
-
-await reconnect();
-
-reconnecting = false;
-
-},8000);
-
-}
-
-});
-
-}
-
-// ================= RECONNECT =================
-
-async function reconnect(){
-
-console.log("🔁 Creating new provider...");
-
-createProvider();
-
-startListener();
-
-}
-
-// ================= TELEGRAM =================
+// ================= TELEGRAM SEND =================
 
 async function send(tx){
 
@@ -155,9 +103,10 @@ try{
 
 const currentBlock = await provider.getBlockNumber();
 
-const fromBlock = currentBlock - 200;
+const fromBlock = currentBlock - 120;
 
-const transferTopic = ethers.id("Transfer(address,address,uint256)");
+const transferTopic =
+ethers.id("Transfer(address,address,uint256)");
 
 const logs = await provider.getLogs({
 
@@ -240,7 +189,7 @@ ethers.formatUnits(value,DECIMALS)
 
 if(amount < MIN_AMOUNT) return;
 
-const hash = event.log.transactionHash;
+const hash = event.transactionHash;
 
 if(sent.has(hash)) return;
 
@@ -269,46 +218,25 @@ console.log("Listener error:",err.message);
 
 }
 
-// ================= HEARTBEAT =================
+// ================= FILTER ERROR FIX =================
 
-setInterval(async()=>{
+provider.on("error",(err)=>{
 
-try{
+console.log("⚠ Provider error:",err.message);
 
-await provider.getBlockNumber();
+if(err.message.includes("filter not found")){
 
-}catch(e){
+console.log("🔄 Restarting listener");
 
-console.log("⚠ RPC heartbeat failed");
-
-if(!reconnecting){
-
-reconnecting = true;
-
-console.log("🔄 Reconnecting RPC...");
-
-setTimeout(async()=>{
-
-await reconnect();
-
-reconnecting = false;
-
-},8000);
+startListener();
 
 }
 
-}
-
-},30000);
+});
 
 // ================= START =================
 
 (async()=>{
-
-console.log("👀 Wallet watcher started");
-console.log("Watching:",WATCH);
-
-createProvider();
 
 await loadLast5();
 

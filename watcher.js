@@ -17,10 +17,12 @@ const CHAT_ID = process.env.CHAT_ID;
 
 const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
 
-const bot = new TelegramBot(BOT_TOKEN,{ polling:true });
+const bot = new TelegramBot(BOT_TOKEN,{
+ polling:true,
+ filepath:false
+});
 
-
-
+let refreshLoop;
 // ==============================
 // CHANNEL JOIN WELCOME
 // ==============================
@@ -233,23 +235,50 @@ try{
 
 const browser = await puppeteer.launch({
 
+
 headless:true,
 userDataDir:"./profile",
 args:[
 "--no-sandbox",
 "--disable-setuid-sandbox",
-"--disable-dev-shm-usage"
+"--disable-dev-shm-usage",
+"--disable-gpu"
 ]
 
 });
 
+browser.on("disconnected", () => {
+
+console.log("Browser disconnected → restarting watcher");
+
+clearInterval(refreshLoop);
+
+setTimeout(startWatcher,5000);
+
+});
+
+
 
 const page = await browser.newPage();
 
+await page.setDefaultNavigationTimeout(0);
+
+// page crash
 page.on("error", async () => {
-  console.log("Page crashed → restarting watcher");
-  await browser.close();
-  setTimeout(startWatcher,5000);
+
+console.log("Page crashed → restarting watcher");
+
+try{
+await browser.close();
+}catch{}
+
+setTimeout(startWatcher,5000);
+
+});
+
+// page javascript error
+page.on("pageerror",(err)=>{
+console.log("Page error:",err.message);
 });
 
 
@@ -263,7 +292,7 @@ timeout:0
 
 console.log("LIVE WATCH STARTED");
 
-setInterval(async()=>{
+refreshLoop = setInterval(async()=>{
 
 try{
 
