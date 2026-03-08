@@ -3,28 +3,24 @@ require("dotenv").config();
 const { ethers } = require("ethers");
 const TelegramBot = require("node-telegram-bot-api");
 
-// ================= ENV =================
-
+// ENV
 const RPC = process.env.RPC_WALLET;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
-if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
+if(!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID){
 console.log("❌ Missing ENV values");
 process.exit(1);
 }
 
 const provider = new ethers.JsonRpcProvider(RPC);
+const bot = new TelegramBot(TELEGRAM_TOKEN,{polling:false});
 
-const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
-
-// ================= WALLET =================
-
-const WATCH_ADDRESS =
+// WATCH ADDRESS
+const WATCH =
 "0xc8bcf348a74018b11dcb52765bd818e85fbe6a3f".toLowerCase();
 
-// ================= USDT =================
-
+// USDT
 const USDT =
 "0x55d398326f99059ff775485246999027b3197955";
 
@@ -34,13 +30,12 @@ let lastBlock = 0;
 let sent = new Set();
 
 console.log("👀 Wallet watcher started");
-console.log("Wallet:",WATCH_ADDRESS);
+console.log("Wallet:",WATCH);
 
-// ================= TELEGRAM =================
+// TELEGRAM
+async function send(tx){
 
-async function sendTelegram(tx){
-
-const message = `
+const msg = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
@@ -52,41 +47,33 @@ ${tx.from}
 📥 To
 ${tx.to}
 
-🔗 Transaction
-https://bscscan.com/tx/${tx.hash}
+🔗 https://bscscan.com/tx/${tx.hash}
 
 ━━━━━━━━━━━━━━━━━━
-🎉 Successful Deposit Confirmed
 `;
 
 try{
-
-await bot.sendMessage(CHANNEL_ID,message);
-
+await bot.sendMessage(CHANNEL_ID,msg);
 console.log("📤 Sent:",tx.amount);
-
-}catch(err){
-
-console.log("Telegram error:",err.message);
-
+}catch(e){
+console.log("Telegram error:",e.message);
 }
 
 }
 
-// ================= BLOCK SCANNER =================
-
-async function scanBlock(){
+// BLOCK SCANNER
+async function scan(){
 
 try{
 
-const blockNumber = await provider.getBlockNumber();
+const current = await provider.getBlockNumber();
 
+// FIRST START → scan last 20 blocks
 if(lastBlock === 0){
-lastBlock = blockNumber;
-return;
+lastBlock = current - 20;
 }
 
-for(let i = lastBlock + 1; i <= blockNumber; i++){
+for(let i = lastBlock + 1; i <= current; i++){
 
 const block = await provider.getBlock(i,true);
 
@@ -100,27 +87,26 @@ for(const log of receipt.logs){
 
 if(log.address.toLowerCase() !== USDT) continue;
 
-const topic = log.topics[0];
+if(log.topics[0] !==
+ethers.id("Transfer(address,address,uint256)"))
+continue;
 
-if(topic !== ethers.id("Transfer(address,address,uint256)")) continue;
+const from = "0x"+log.topics[1].slice(26);
+const to = "0x"+log.topics[2].slice(26);
 
-const from = "0x" + log.topics[1].slice(26);
-const to = "0x" + log.topics[2].slice(26);
-
-const fromAddr = from.toLowerCase();
-const toAddr = to.toLowerCase();
-
-if(fromAddr !== WATCH_ADDRESS && toAddr !== WATCH_ADDRESS) continue;
-
-const value = ethers.getBigInt(log.data);
-
-const amount = Number(
-ethers.formatUnits(value,DECIMALS)
-);
+if(
+from.toLowerCase() !== WATCH &&
+to.toLowerCase() !== WATCH
+) continue;
 
 if(sent.has(tx.hash)) continue;
 
-await sendTelegram({
+const value = ethers.getBigInt(log.data);
+
+const amount =
+Number(ethers.formatUnits(value,DECIMALS));
+
+await send({
 from,
 to,
 amount,
@@ -139,16 +125,15 @@ sent.clear();
 
 }
 
-lastBlock = blockNumber;
+lastBlock = current;
 
 }catch(err){
 
-console.log("Scanner error:",err.message);
+console.log("scan error:",err.message);
 
 }
 
 }
 
-// ================= LOOP =================
-
-setInterval(scanBlock,4000);
+// LOOP
+setInterval(scan,4000);
