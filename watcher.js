@@ -5,7 +5,12 @@ const fs = require("fs");
 const TelegramBot = require("node-telegram-bot-api");
 
 // Agar flag.js aapke paas hai toh isko rakhiye, warna comment kar dena
-const getFlagEmoji = require("./src/utils/flag"); 
+let getFlagEmoji;
+try {
+  getFlagEmoji = require("./src/utils/flag");
+} catch {
+  getFlagEmoji = () => "🌍"; // Fallback emoji agar flag.js na mile
+}
 
 // ==============================
 // CONFIG
@@ -14,6 +19,7 @@ const getFlagEmoji = require("./src/utils/flag");
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
+const TARGET_URL = "https://www.rebirthcharity.com/Report/AutoPoolTeam"; // 🚨 Target URL set kiya
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true, filepath: false });
 
@@ -86,8 +92,7 @@ bot.onText(/\/start/, (msg) => {
 // ==============================
 
 async function sendTelegram(user) {
-  // Agar getFlagEmoji nahi hai toh isko hata dena ya string bana dena
-  const flag = getFlagEmoji ? getFlagEmoji(user.country) : "🌍";
+  const flag = getFlagEmoji(user.country);
 
   const message = `
 🚀🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥🚀
@@ -128,7 +133,7 @@ async function sendTelegram(user) {
 }
 
 // ==============================
-// AUTO LOGIN FUNCTION (Aapka Diya Hua Sahi Logic)
+// AUTO LOGIN FUNCTION (Updated for Dashboard Redirect)
 // ==============================
 
 async function autoLogin(page) {
@@ -157,6 +162,11 @@ async function autoLogin(page) {
       await new Promise(r => setTimeout(r, 7000));
 
       console.log("LOGIN SUCCESS");
+
+      // 🚨 FIX: Wapas table wale page par jao, dashboard par mat ruko!
+      console.log("Redirecting back to AutoPoolTeam page...");
+      await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+
     } else {
       console.log("Session active");
     }
@@ -203,10 +213,7 @@ async function startWatcher() {
       setTimeout(startWatcher, 5000);
     });
 
-    await page.goto(
-      "https://www.rebirthcharity.com/Report/AutoPoolTeam",
-      { waitUntil: "networkidle2", timeout: 0 }
-    );
+    await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 0 });
 
     console.log("🚀 WATCHER STARTED");
 
@@ -216,7 +223,8 @@ async function startWatcher() {
     // Har 20 seconds mein page refresh karke IDs nikalna
     refreshLoop = setInterval(async () => {
       try {
-        await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+        // 🚨 FIX: page.reload() ki jagah force goto TARGET_URL
+        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
         
         // Ensure logged in
         await autoLogin(page);
@@ -253,6 +261,12 @@ async function startWatcher() {
           return;
         }
         console.log("Scrape error:", err.message);
+        
+        // 🚨 FIX: Agar table na mile, toh debug karne ke liye screenshot le lo
+        try {
+          await page.screenshot({ path: "error_screen.png", fullPage: true });
+          console.log("📸 Screenshot saved as error_screen.png for debugging.");
+        } catch(e) {}
       }
     }, 20000); // 20 Seconds interval
 
