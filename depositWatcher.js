@@ -21,8 +21,7 @@ const USDT_CONTRACT =
 
 // ================= PROVIDER =================
 
-const provider = new ethers.JsonRpcProvider(RPC);
-
+let provider = new ethers.JsonRpcProvider(RPC);
 provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
@@ -37,7 +36,7 @@ const ABI = [
 
 // ================= CONTRACT =================
 
-const contract = new ethers.Contract(
+let contract = new ethers.Contract(
 USDT_CONTRACT,
 ABI,
 provider
@@ -50,17 +49,15 @@ console.log("🔥 Rebirth Deposit Scanner Started");
 const DECIMALS = 18;
 
 let txQueue = [];
-
 let sentHashes = new Set();
+let listenerStarted = false;
 
 // ================= FILTER =================
 
 function isValidAmount(amount){
 
 if(amount < 30) return false;
-
 if(amount > 150) return false;
-
 if(amount % 30 !== 0) return false;
 
 return true;
@@ -76,7 +73,6 @@ console.log("🔎 Scanning last 15 minutes deposits...");
 try{
 
 const currentBlock = await provider.getBlockNumber();
-
 const fromBlock = currentBlock - 300;
 
 const transferTopic = ethers.id(
@@ -142,6 +138,10 @@ console.log("Past scan error:",err.message);
 
 function startListener(){
 
+if(listenerStarted) return;
+
+listenerStarted = true;
+
 console.log("🎧 Listener started");
 
 contract.on("Transfer",async(from,to,value,event)=>{
@@ -185,21 +185,44 @@ console.log("Listener Error:",err.message);
 
 }
 
-// ================= AUTO RESTART =================
+// ================= RECONNECT SYSTEM =================
+
+async function restartListener(){
+
+try{
+
+console.log("🔄 Restarting listener...");
+
+contract.removeAllListeners();
+
+provider = new ethers.JsonRpcProvider(RPC);
+provider.pollingInterval = 4000;
+
+contract = new ethers.Contract(
+USDT_CONTRACT,
+ABI,
+provider
+);
+
+listenerStarted = false;
+
+startListener();
+
+}catch(e){
+
+console.log("Restart failed:",e.message);
+
+}
+
+}
+
+// ================= PROVIDER ERROR =================
 
 provider.on("error",(err)=>{
 
 console.log("⚠ Provider error:",err.message);
 
-if(err.message.includes("filter not found")){
-
-console.log("🔄 Restarting listener");
-
-contract.removeAllListeners();
-
-startListener();
-
-}
+restartListener();
 
 });
 
@@ -225,7 +248,6 @@ try{
 if(txQueue.length === 0){
 
 await new Promise(r=>setTimeout(r,4000));
-
 continue;
 
 }
