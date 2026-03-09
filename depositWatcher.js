@@ -10,14 +10,13 @@ const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-console.log("❌ Missing ENV values");
-process.exit(1);
+  console.log("❌ Missing ENV values");
+  process.exit(1);
 }
 
 // ================= CONTRACT =================
 
-const USDT_CONTRACT =
-"0x55d398326f99059ff775485246999027b3197955";
+const USDT_CONTRACT = "0x55d398326f99059ff775485246999027b3197955";
 
 // ================= PROVIDER =================
 
@@ -27,20 +26,20 @@ provider.pollingInterval = 4000;
 
 // ================= TELEGRAM =================
 
-const bot = new TelegramBot(TELEGRAM_TOKEN,{ polling:false });
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 
 // ================= ABI =================
 
 const ABI = [
-"event Transfer(address indexed from,address indexed to,uint256 value)"
+  "event Transfer(address indexed from,address indexed to,uint256 value)"
 ];
 
 // ================= CONTRACT =================
 
 const contract = new ethers.Contract(
-USDT_CONTRACT,
-ABI,
-provider
+  USDT_CONTRACT,
+  ABI,
+  provider
 );
 
 console.log("🔥 Rebirth Deposit Scanner Started");
@@ -50,189 +49,168 @@ console.log("🔥 Rebirth Deposit Scanner Started");
 const DECIMALS = 18;
 
 let txQueue = [];
-
 let sentHashes = new Set();
 
 // ================= FILTER =================
 
-function isValidAmount(amount){
-
-if(amount < 30) return false;
-
-if(amount > 150) return false;
-
-if(amount % 30 !== 0) return false;
-
-return true;
-
+function isValidAmount(amount) {
+  if (amount < 30) return false;
+  if (amount > 150) return false;
+  if (amount % 30 !== 0) return false;
+  return true;
 }
 
 // ================= PAST SCAN =================
 
-async function scanPastDeposits(){
+async function scanPastDeposits() {
+  console.log("🔎 Scanning last 15 minutes deposits...");
 
-console.log("🔎 Scanning last 15 minutes deposits...");
+  try {
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = currentBlock - 300;
 
-try{
+    const transferTopic = ethers.id(
+      "Transfer(address,address,uint256)"
+    );
 
-const currentBlock = await provider.getBlockNumber();
+    const logs = await provider.getLogs({
+      address: USDT_CONTRACT,
+      fromBlock: fromBlock,
+      toBlock: currentBlock,
+      topics: [transferTopic]
+    });
 
-const fromBlock = currentBlock - 300;
+    for (const log of logs) {
+      try {
+        const parsed = contract.interface.parseLog(log);
 
-const transferTopic = ethers.id(
-"Transfer(address,address,uint256)"
-);
+        const from = parsed.args.from;
+        const to = parsed.args.to;
 
-const logs = await provider.getLogs({
-address: USDT_CONTRACT,
-fromBlock: fromBlock,
-toBlock: currentBlock,
-topics: [transferTopic]
-});
+        const amount = Number(
+          ethers.formatUnits(parsed.args.value, DECIMALS)
+        );
 
-for(const log of logs){
+        const hash = log.transactionHash;
 
-try{
+        if (sentHashes.has(hash)) continue;
 
-const parsed = contract.interface.parseLog(log);
+        if (isValidAmount(amount)) {
+          console.log("📦 Past Valid Deposit:", amount);
+          
+          txQueue.push({
+            from,
+            to,
+            amount,
+            hash
+          });
 
-const from = parsed.args.from;
-const to = parsed.args.to;
+          sentHashes.add(hash);
+        }
 
-const amount = Number(
-ethers.formatUnits(parsed.args.value,DECIMALS)
-);
+      } catch (e) {
+        console.log("Parse error:", e.message);
+      }
+    }
 
-const hash = log.transactionHash;
+    console.log("✅ Past scan completed");
 
-if(sentHashes.has(hash)) continue;
-
-if(isValidAmount(amount)){
-
-console.log("📦 Past Valid Deposit:",amount);
-
-txQueue.push({
-from,
-to,
-amount,
-hash
-});
-
-sentHashes.add(hash);
-
-}
-
-}catch(e){
-console.log("Parse error:",e.message);
-}
-
-}
-
-console.log("✅ Past scan completed");
-
-}catch(err){
-
-console.log("Past scan error:",err.message);
-
-}
-
+  } catch (err) {
+    console.log("Past scan error:", err.message);
+  }
 }
 
 // ================= LISTENER =================
 
-function startListener(){
+function startListener() {
+  console.log("🎧 Listener started");
+  
+  // Remove old listeners before starting to avoid duplicates
+  contract.removeAllListeners();
 
-console.log("🎧 Listener started");
+  contract.on("Transfer", async (from, to, value, event) => {
+    try {
+      const amount = Number(
+        ethers.formatUnits(value, DECIMALS)
+      );
 
-contract.on("Transfer",async(from,to,value,event)=>{
+      const hash = event.log.transactionHash;
 
-try{
+      if (sentHashes.has(hash)) return;
 
-const amount = Number(
-ethers.formatUnits(value,DECIMALS)
-);
+      console.log("TX:", from, "→", to, "Amount:", amount);
 
-const hash = event.log.transactionHash;
+      if (isValidAmount(amount)) {
+        console.log("✅ Valid USDT detected");
 
-if(sentHashes.has(hash)) return;
+        txQueue.push({
+          from,
+          to,
+          amount,
+          hash
+        });
 
-console.log(
-"TX:",from,"→",to,"Amount:",amount
-);
+        sentHashes.add(hash);
+      }
 
-if(isValidAmount(amount)){
+    } catch (err) {
+      console.log("Listener Error:", err.message);
+    }
+  });
+}
 
-console.log("✅ Valid USDT detected");
+// ================= GLOBAL ERROR & CRASH HANDLER =================
 
-txQueue.push({
-from,
-to,
-amount,
-hash
+provider.on("error", (err) => {
+  console.log("⚠ Provider error:", err.message);
+
+  if (err.message.includes("filter not found")) {
+    console.log("🔄 Restarting listener from provider error");
+    startListener();
+  }
 });
 
-sentHashes.add(hash);
-
-}
-
-}catch(err){
-
-console.log("Listener Error:",err.message);
-
-}
-
+// YEH DONO BLOCKS BOT KO CRASH HONE SE BACHAYENGE 🛡️
+process.on("uncaughtException", (err) => {
+  console.log("Uncaught Exception:", err.message);
 });
 
-}
-
-// ================= AUTO RESTART =================
-
-provider.on("error",(err)=>{
-
-console.log("⚠ Provider error:",err.message);
-
-if(err.message.includes("filter not found")){
-
-console.log("🔄 Restarting listener");
-
-contract.removeAllListeners();
-
-startListener();
-
-}
-
+process.on("unhandledRejection", (err) => {
+  console.log("Unhandled Rejection:", err?.message || err);
+  
+  // Agar HTTP RPC filter drop kar de toh automatically auto-restart karega
+  if (err && err.message && err.message.includes("filter not found")) {
+    console.log("🔄 RPC Filter dropped! Auto-restarting listener...");
+    try {
+      startListener();
+    } catch (e) {
+      console.log("Error restarting:", e.message);
+    }
+  }
 });
 
 // ================= RANDOM DELAY =================
 
-function randomDelay(){
+function randomDelay() {
+  const min = 2 * 60 * 1000;
+  const max = 5 * 60 * 1000;
 
-const min = 2 * 60 * 1000;
-const max = 5 * 60 * 1000;
-
-return Math.floor(Math.random() * (max - min + 1)) + min;
-
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // ================= SEND LOOP =================
 
-async function senderLoop(){
+async function senderLoop() {
+  while (true) {
+    try {
+      if (txQueue.length === 0) {
+        await new Promise(r => setTimeout(r, 4000));
+        continue;
+      }
 
-while(true){
+      const tx = txQueue.shift();
 
-try{
-
-if(txQueue.length === 0){
-
-await new Promise(r=>setTimeout(r,4000));
-
-continue;
-
-}
-
-const tx = txQueue.shift();
-
-const message = `
+      const message = `
 🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
@@ -251,30 +229,21 @@ https://bscscan.com/tx/${tx.hash}
 🎉 Successful Deposit Confirmed
 `;
 
-await bot.sendMessage(CHANNEL_ID,message);
+      await bot.sendMessage(CHANNEL_ID, message);
+      console.log("📤 Sent:", tx.amount);
 
-console.log("📤 Sent:",tx.amount);
+      await new Promise(r => setTimeout(r, randomDelay()));
 
-await new Promise(r=>setTimeout(r,randomDelay()));
-
-}catch(err){
-
-console.log("Send Error:",err.message);
-
-}
-
-}
-
+    } catch (err) {
+      console.log("Send Error:", err.message);
+    }
+  }
 }
 
 // ================= START =================
 
 (async () => {
-
-await scanPastDeposits();
-
-startListener();
-
-senderLoop();
-
+  await scanPastDeposits();
+  startListener();
+  senderLoop();
 })();
