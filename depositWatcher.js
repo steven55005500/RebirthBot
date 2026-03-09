@@ -1,249 +1,155 @@
 require("dotenv").config();
-
 const { ethers } = require("ethers");
 const TelegramBot = require("node-telegram-bot-api");
 
 // ================= ENV =================
-
-const RPC = process.env.RPC;
+const RPC = process.env.RPC; // https://bsc-dataseed.binance.org/
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
 const CHANNEL_ID = process.env.CHAT_ID;
 
 if (!RPC || !TELEGRAM_TOKEN || !CHANNEL_ID) {
-  console.log("❌ Missing ENV values");
-  process.exit(1);
+    console.log("❌ Missing ENV values");
+    process.exit(1);
 }
 
-// ================= CONTRACT =================
-
+// ================= CONFIG =================
 const USDT_CONTRACT = "0x55d398326f99059ff775485246999027b3197955";
-
-// ================= PROVIDER =================
-
+const DECIMALS = 18;
 const provider = new ethers.JsonRpcProvider(RPC);
-
-provider.pollingInterval = 4000;
-
-// ================= TELEGRAM =================
-
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 
-// ================= ABI =================
-
-const ABI = [
-  "event Transfer(address indexed from,address indexed to,uint256 value)"
-];
-
-// ================= CONTRACT =================
-
-const contract = new ethers.Contract(
-  USDT_CONTRACT,
-  ABI,
-  provider
-);
-
-console.log("🔥 Rebirth Deposit Scanner Started");
-
-// ================= SETTINGS =================
-
-const DECIMALS = 18;
+const ABI = ["event Transfer(address indexed from,address indexed to,uint256 value)"];
+const contract = new ethers.Contract(USDT_CONTRACT, ABI, provider);
 
 let txQueue = [];
 let sentHashes = new Set();
+let lastCheckedBlock = 0;
 
-// ================= FILTER =================
+console.log("🔥 Rebirth Stable Deposit Scanner Started");
 
+// ================= VALIDATION =================
 function isValidAmount(amount) {
-  if (amount < 30) return false;
-  if (amount > 150) return false;
-  if (amount % 30 !== 0) return false;
-  return true;
+    if (amount < 30 || amount > 150 || amount % 30 !== 0) return false;
+    return true;
 }
 
-// ================= PAST SCAN =================
+// ================= STABLE POLLING LISTENER =================
+// Yeh function "filter not found" error ko jad se khatam kar dega
+async function startStableListener() {
+    console.log("🎧 Live Listener Started (Stable Polling Mode)");
 
-async function scanPastDeposits() {
-  console.log("🔎 Scanning last 15 minutes deposits...");
-
-  try {
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock = currentBlock - 300;
-
-    const transferTopic = ethers.id(
-      "Transfer(address,address,uint256)"
-    );
-
-    const logs = await provider.getLogs({
-      address: USDT_CONTRACT,
-      fromBlock: fromBlock,
-      toBlock: currentBlock,
-      topics: [transferTopic]
-    });
-
-    for (const log of logs) {
-      try {
-        const parsed = contract.interface.parseLog(log);
-
-        const from = parsed.args.from;
-        const to = parsed.args.to;
-
-        const amount = Number(
-          ethers.formatUnits(parsed.args.value, DECIMALS)
-        );
-
-        const hash = log.transactionHash;
-
-        if (sentHashes.has(hash)) continue;
-
-        if (isValidAmount(amount)) {
-          console.log("📦 Past Valid Deposit:", amount);
-          
-          txQueue.push({
-            from,
-            to,
-            amount,
-            hash
-          });
-
-          sentHashes.add(hash);
-        }
-
-      } catch (e) {
-        console.log("Parse error:", e.message);
-      }
-    }
-
-    console.log("✅ Past scan completed");
-
-  } catch (err) {
-    console.log("Past scan error:", err.message);
-  }
-}
-
-// ================= LISTENER =================
-
-function startListener() {
-  console.log("🎧 Listener started");
-  
-  // Remove old listeners before starting to avoid duplicates
-  contract.removeAllListeners();
-
-  contract.on("Transfer", async (from, to, value, event) => {
     try {
-      const amount = Number(
-        ethers.formatUnits(value, DECIMALS)
-      );
-
-      const hash = event.log.transactionHash;
-
-      if (sentHashes.has(hash)) return;
-
-      console.log("TX:", from, "→", to, "Amount:", amount);
-
-      if (isValidAmount(amount)) {
-        console.log("✅ Valid USDT detected");
-
-        txQueue.push({
-          from,
-          to,
-          amount,
-          hash
-        });
-
-        sentHashes.add(hash);
-      }
-
+        // Shuruat mein current block le lo
+        lastCheckedBlock = await provider.getBlockNumber();
+        console.log(`📡 Starting from block: ${lastCheckedBlock}`);
     } catch (err) {
-      console.log("Listener Error:", err.message);
+        console.log("❌ Initial Block Error:", err.message);
+        setTimeout(startStableListener, 5000);
+        return;
     }
-  });
+
+    // Har 12 second mein naye blocks scan karo (BSC block time ~3s hota hai)
+    setInterval(async () => {
+        try {
+            const currentBlock = await provider.getBlockNumber();
+
+            if (currentBlock > lastCheckedBlock) {
+                // Sirf naye blocks ka data uthao
+                const fromBlock = lastCheckedBlock + 1;
+                const toBlock = currentBlock;
+
+                console.log(`🔎 Scanning: ${fromBlock} to ${toBlock}`);
+
+                const logs = await provider.getLogs({
+                    address: USDT_CONTRACT,
+                    fromBlock: fromBlock,
+                    toBlock: toBlock,
+                    topics: [ethers.id("Transfer(address,address,uint256)")]
+                });
+
+                for (const log of logs) {
+                    try {
+                        const parsed = contract.interface.parseLog(log);
+                        const amount = Number(ethers.formatUnits(parsed.args.value, DECIMALS));
+                        const hash = log.transactionHash;
+
+                        if (!sentHashes.has(hash) && isValidAmount(amount)) {
+                            console.log(`✅ Valid Deposit: ${amount} USDT | Hash: ${hash.substring(0, 10)}...`);
+                            
+                            txQueue.push({
+                                from: parsed.args.from,
+                                to: parsed.args.to,
+                                amount,
+                                hash
+                            });
+
+                            sentHashes.add(hash);
+                        }
+                    } catch (e) {
+                        // Skip if parse fails
+                    }
+                }
+                lastCheckedBlock = currentBlock; // Update block counter
+            }
+        } catch (err) {
+            console.log("⚠️ RPC Polling Error (Retrying...):", err.message);
+            // Agar RPC fail ho jaye toh koi tension nahi, agla interval pichle blocks cover kar lega
+        }
+    }, 12000); 
 }
-
-// ================= GLOBAL ERROR & CRASH HANDLER =================
-
-provider.on("error", (err) => {
-  console.log("⚠ Provider error:", err.message);
-
-  if (err.message.includes("filter not found")) {
-    console.log("🔄 Restarting listener from provider error");
-    startListener();
-  }
-});
-
-// YEH DONO BLOCKS BOT KO CRASH HONE SE BACHAYENGE 🛡️
-process.on("uncaughtException", (err) => {
-  console.log("Uncaught Exception:", err.message);
-});
-
-process.on("unhandledRejection", (err) => {
-  console.log("Unhandled Rejection:", err?.message || err);
-  
-  // Agar HTTP RPC filter drop kar de toh automatically auto-restart karega
-  if (err && err.message && err.message.includes("filter not found")) {
-    console.log("🔄 RPC Filter dropped! Auto-restarting listener...");
-    try {
-      startListener();
-    } catch (e) {
-      console.log("Error restarting:", e.message);
-    }
-  }
-});
 
 // ================= RANDOM DELAY =================
-
 function randomDelay() {
-  const min = 2 * 60 * 1000;
-  const max = 5 * 60 * 1000;
-
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+    const min = 2 * 60 * 1000;
+    const max = 5 * 60 * 1000;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// ================= SEND LOOP =================
-
+// ================= SENDER LOOP =================
 async function senderLoop() {
-  while (true) {
-    try {
-      if (txQueue.length === 0) {
-        await new Promise(r => setTimeout(r, 4000));
-        continue;
-      }
+    while (true) {
+        try {
+            if (txQueue.length === 0) {
+                await new Promise(r => setTimeout(r, 4000));
+                continue;
+            }
 
-      const tx = txQueue.shift();
+            const tx = txQueue.shift();
 
-      const message = `
-🚀🔥 REBIRTH CHARITY – NEW DEPOSIT 🔥🚀
+            const message = `
+🚀🔥 <b>REBIRTH CHARITY – NEW DEPOSIT</b> 🔥🚀
 ━━━━━━━━━━━━━━━━━━
 
-💰 Amount: $${tx.amount} USDT
+💰 <b>Amount:</b> $${tx.amount} USDT
 
-📤 From
-${tx.from}
+📤 <b>From</b>
+<code>${tx.from}</code>
 
-📥 To
-${tx.to}
+📥 <b>To</b>
+<code>${tx.to}</code>
 
-🔗 Transaction
-https://bscscan.com/tx/${tx.hash}
+🔗 <a href="https://bscscan.com/tx/${tx.hash}"><b>View Transaction on BscScan</b></a>
 
 ━━━━━━━━━━━━━━━━━━
 🎉 Successful Deposit Confirmed
 `;
 
-      await bot.sendMessage(CHANNEL_ID, message);
-      console.log("📤 Sent:", tx.amount);
+            await bot.sendMessage(CHANNEL_ID, message, { parse_mode: "HTML" });
+            console.log("📤 Message Sent to Telegram:", tx.amount);
 
-      await new Promise(r => setTimeout(r, randomDelay()));
+            // Wait for random delay to avoid spamming
+            await new Promise(r => setTimeout(r, randomDelay()));
 
-    } catch (err) {
-      console.log("Send Error:", err.message);
+        } catch (err) {
+            console.log("❌ Send Error:", err.message);
+        }
     }
-  }
 }
 
-// ================= START =================
+// ================= ERROR HANDLERS =================
+process.on("uncaughtException", (err) => console.log("Uncaught Exception:", err.message));
+process.on("unhandledRejection", (err) => console.log("Unhandled Rejection:", err?.message || err));
 
-(async () => {
-  await scanPastDeposits();
-  startListener();
-  senderLoop();
-})();
+// ================= EXECUTE =================
+startStableListener();
+senderLoop();
