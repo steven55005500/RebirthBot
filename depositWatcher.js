@@ -26,7 +26,6 @@ let txQueue = [];
 let sentHashes = new Set();
 let lastCheckedBlock = 0;
 
-// Purane sent hashes load karo taaki restart pe duplicate na bhejye
 if (fs.existsSync("sent_deposits.json")) {
     try {
         const data = JSON.parse(fs.readFileSync("sent_deposits.json", "utf8"));
@@ -39,35 +38,36 @@ if (fs.existsSync("sent_deposits.json")) {
 
 function saveHash(hash) {
     sentHashes.add(hash);
-    const arr = [...sentHashes].slice(-2000); // Sirf last 2000 hashes rakho file heavy na ho
+    const arr = [...sentHashes].slice(-1000); 
     fs.writeFileSync("sent_deposits.json", JSON.stringify(arr, null, 2));
 }
 
-// ================= FILTER =================
 function isValidAmount(amount) {
-    // $30, $60, $90, $120, $150 only
     return amount >= 30 && amount <= 150 && amount % 30 === 0;
 }
 
-// ================= STABLE SCANNER (Polling) =================
+// ================= ANTI-RATE-LIMIT SCANNER =================
 async function startStableScanner() {
-    console.log("🔥 Rebirth Stable Deposit Scanner Started");
+    console.log("🔥 Rebirth Anti-Rate-Limit Scanner Started");
     
     try {
         lastCheckedBlock = await provider.getBlockNumber();
+        console.log(`📡 Starting from block: ${lastCheckedBlock}`);
     } catch (e) {
-        console.log("❌ Error getting block:", e.message);
-        setTimeout(startStableScanner, 5000);
+        console.log("❌ Block Error, Retrying...");
+        setTimeout(startStableScanner, 10000);
         return;
     }
 
-    // Har 20 second mein check karega (Public RPC ke liye safe)
+    // Interval badha kar 40 second kar diya hai (Ekdum safe)
     setInterval(async () => {
         try {
             const currentBlock = await provider.getBlockNumber();
             if (currentBlock > lastCheckedBlock) {
+                
+                // 🚨 LIMIT: Ek baar mein sirf 5 blocks hi scan honge
+                const toBlock = Math.min(currentBlock, lastCheckedBlock + 5);
                 const fromBlock = lastCheckedBlock + 1;
-                const toBlock = currentBlock;
 
                 console.log(`🔎 Scanning: ${fromBlock} to ${toBlock}`);
 
@@ -85,33 +85,22 @@ async function startStableScanner() {
                         const hash = log.transactionHash;
 
                         if (!sentHashes.has(hash) && isValidAmount(amount)) {
-                            console.log(`✅ Valid Deposit Found: ${amount} USDT`);
-                            txQueue.push({
-                                from: parsed.args.from,
-                                to: parsed.args.to,
-                                amount,
-                                hash
-                            });
-                            saveHash(hash); // File mein turant save karo
+                            console.log(`✅ Valid Deposit: ${amount} USDT`);
+                            txQueue.push({ from: parsed.args.from, to: parsed.args.to, amount, hash });
+                            saveHash(hash);
                         }
                     } catch (e) {}
                 }
-                lastCheckedBlock = currentBlock;
+                lastCheckedBlock = toBlock;
             }
         } catch (err) {
-            console.log("⚠️ Polling Error:", err.message);
+            // Agar Binance block kare, toh agle 40s tak shanti se ruko
+            console.log("⚠️ RPC Busy... Waiting for next cycle");
         }
-    }, 20000); 
+    }, 40000); 
 }
 
-// ================= RANDOM DELAY =================
-function randomDelay() {
-    const min = 2 * 60 * 1000; // 2 minute
-    const max = 5 * 60 * 1000; // 5 minute
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// ================= SENDER LOOP =================
+// ================= SENDER LOOP (Steady Delivery) =================
 async function senderLoop() {
     while (true) {
         try {
@@ -120,45 +109,26 @@ async function senderLoop() {
                 continue;
             }
 
-            const tx = txQueue.shift(); // Pehle wala uthao
-
-            const message = `
-🚀🔥 <b>REBIRTH CHARITY – NEW DEPOSIT</b> 🔥🚀
-━━━━━━━━━━━━━━━━━━
-
-💰 <b>Amount:</b> $${tx.amount} USDT
-
-📤 <b>From</b>
-<code>${tx.from}</code>
-
-📥 <b>To</b>
-<code>${tx.to}</code>
-
-🔗 <a href="https://bscscan.com/tx/${tx.hash}"><b>View Transaction on BscScan</b></a>
-
-━━━━━━━━━━━━━━━━━━
-🎉 Successful Deposit Confirmed
-`;
+            const tx = txQueue.shift();
+            const message = `🚀🔥 <b>REBIRTH CHARITY – NEW DEPOSIT</b> 🔥🚀\n━━━━━━━━━━━━━━━━━━\n💰 <b>Amount:</b> $${tx.amount} USDT\n📤 <b>From:</b> <code>${tx.from}</code>\n📥 <b>To:</b> <code>${tx.to}</code>\n🔗 <a href="https://bscscan.com/tx/${tx.hash}"><b>BscScan Link</b></a>\n━━━━━━━━━━━━━━━━━━\n🎉 Successful Deposit Confirmed`;
 
             await bot.sendMessage(CHANNEL_ID, message, { parse_mode: "HTML" });
-            console.log("📤 Message Sent to Telegram:", tx.amount);
+            console.log("📤 Message Sent:", tx.amount);
 
-            // 2 se 5 minute ka random gap
-            const wait = randomDelay();
-            console.log(`💤 Waiting ${Math.floor(wait/1000)}s for next message...`);
+            // 2-5 min random gap taaki Telegram spam na ho
+            const wait = Math.floor(Math.random() * (300000 - 120000 + 1)) + 120000;
+            console.log(`💤 Next message in ${Math.floor(wait/1000)}s`);
             await new Promise(r => setTimeout(r, wait));
 
         } catch (err) {
             console.log("❌ Send Error:", err.message);
-            await new Promise(r => setTimeout(r, 10000)); // Error pe 10s ruko
+            await new Promise(r => setTimeout(r, 15000));
         }
     }
 }
 
-// ================= ERROR HANDLING =================
 process.on("uncaughtException", (err) => console.log("Uncaught:", err.message));
 process.on("unhandledRejection", (err) => console.log("Unhandled:", err?.message || err));
 
-// ================= START =================
 startStableScanner();
 senderLoop();
