@@ -43,7 +43,7 @@ async function start(){
   try{
 
 browser = await puppeteer.launch({
-  headless: false,
+  headless: true,
   userDataDir: "./profile",
   args: [
     "--no-sandbox",
