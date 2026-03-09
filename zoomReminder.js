@@ -7,25 +7,27 @@ const CHAT_ID = process.env.CHAT_ID;
 
 const message1 = `🌍 REBIRTH CHARITY – DAILY ZOOM MEETING 🌍
 
-📅 Daily Zoom Meeting
-⏰ Join Sharp at 07:00 PM (India Time)
+📅 Daily Zoom Meeting  
+⏰ Join Sharp at 09:00 PM (India Time)
 
 🌎 International Time Schedule
-🇮🇳 India – 7:00 PM
-🇦🇪 Dubai – 5:30 PM
-🇧🇩 Bangladesh – 7:30 PM
-🇱🇰 Sri Lanka – 7:00 PM
-🇵🇰 Pakistan – 6:30 PM
-🇬🇧 United Kingdom – 1:30 PM
-🇺🇸 USA (New York) – 8:30 AM
+
+🇮🇳 India – 9:00 PM  
+🇦🇪 Dubai – 7:30 PM  
+🇧🇩 Bangladesh – 9:30 PM  
+🇱🇰 Sri Lanka – 9:00 PM  
+🇵🇰 Pakistan – 8:30 PM  
+🇬🇧 United Kingdom – 3:30 PM  
+🇺🇸 USA (New York) – 10:30 AM  
 
 🔗 Join Zoom Meeting:
 https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
 
-🆔 Meeting ID: 847 9717 5150
-🔑 Passcode: 12345
+🆔 Meeting ID: 847 9717 5150  
+🔑 Passcode: 12345  
 
-🚀 Be On Time • Learn • Grow • Succeed
+🚀 Be On Time • Learn • Grow • Succeed  
+
 🌟 REBIRTH CHARITY – Together We Rise!`;
 
 const message2 = `🚀🚀🚀 HELLO REBIRTH CHARITY MEMBERS 🚀🚀🚀
@@ -150,4 +152,4 @@ async function sendMessages() {
 sendMessages();
 
 // Har 15 minute me repeat
-setInterval(sendMessages, 30 * 60 * 1000);
+setInterval(sendMessages, 60 * 60 * 1000);
