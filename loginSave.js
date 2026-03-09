@@ -4,8 +4,7 @@ const puppeteer = require("puppeteer");
 async function autoLogin(page){
   try{
 
-await page.waitForSelector("#txtusername",{timeout:15000});
-const loginInput = await page.$("#txtusername");
+    const loginInput = await page.$("#txtusername");
 
     if(loginInput){
 
