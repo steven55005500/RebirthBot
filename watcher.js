@@ -298,7 +298,7 @@ try{
 
 await safeReload(page);
 
-await page.waitForSelector("table",{timeout:20000});
+await page.waitForSelector(".box-body table",{timeout:30000});
 
 await new Promise(r=>setTimeout(r,2000));
 
@@ -331,11 +331,11 @@ console.log("LOGIN SUCCESS");
 
 console.log("Page refreshed");
 
-await page.waitForSelector("table tbody tr",{timeout:20000});
+await page.waitForSelector(".box-body table tbody tr",{timeout:30000});
 
 const users = await page.evaluate(()=>{
 
-const rows = document.querySelectorAll("table tbody tr");
+const rows = document.querySelectorAll(".box-body table tbody tr");
 
 return [...rows].map(r=>({
 
