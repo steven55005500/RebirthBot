@@ -4,7 +4,8 @@ const puppeteer = require("puppeteer");
 async function autoLogin(page){
   try{
 
-    const loginInput = await page.$("#txtusername");
+await page.waitForSelector("#txtusername",{timeout:15000});
+const loginInput = await page.$("#txtusername");
 
     if(loginInput){
 
@@ -41,17 +42,19 @@ async function start(){
 
   try{
 
-    browser = await puppeteer.launch({
-      headless:true,
-      userDataDir:"./profile",
-      args:[
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-crash-reporter"
-      ]
-    });
+browser = await puppeteer.launch({
+  headless: false,
+  userDataDir: "./profile",
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-crash-reporter",
+    "--disable-blink-features=AutomationControlled"
+  ],
+  defaultViewport: null
+});
 
     const page = await browser.newPage();
 
@@ -60,7 +63,7 @@ async function start(){
     await page.goto(
       "https://www.rebirthcharity.com/Report/AutoPoolTeam",
       {
-        waitUntil:"domcontentloaded",
+         waitUntil:"networkidle2",
         timeout:0
       }
     );
