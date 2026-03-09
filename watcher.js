@@ -298,7 +298,9 @@ try{
 
 await safeReload(page);
 
-await new Promise(r=>setTimeout(r,3000));
+await page.waitForSelector("table",{timeout:20000});
+
+await new Promise(r=>setTimeout(r,2000));
 
 const loginInput = await page.$("#txtusername");
 
@@ -328,6 +330,8 @@ console.log("LOGIN SUCCESS");
 }
 
 console.log("Page refreshed");
+
+await page.waitForSelector("table tbody tr",{timeout:20000});
 
 const users = await page.evaluate(()=>{
 
