@@ -4,11 +4,15 @@ const puppeteer = require("puppeteer");
 async function autoLogin(page){
   try{
 
+    await page.waitForSelector("body",{timeout:20000});
     const loginInput = await page.$("#txtusername");
 
     if(loginInput){
 
       console.log("Session expired → Logging in...");
+
+      await page.waitForSelector("#txtusername",{timeout:20000});
+      await page.waitForSelector("input[type=password]",{timeout:20000});
 
       await page.click("#txtusername",{clickCount:3});
       await page.keyboard.press("Backspace");

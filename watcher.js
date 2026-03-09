@@ -237,7 +237,7 @@ const browser = await puppeteer.launch({
 
 
 headless:true,
-userDataDir:"./profile",
+userDataDir:"./profile_watcher",
 args:[
 "--no-sandbox",
 "--disable-setuid-sandbox",
