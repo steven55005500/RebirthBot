@@ -4,24 +4,23 @@ require("./zoomReminder");
 const puppeteer = require("puppeteer");
 const axios = require("axios");
 const fs = require("fs");
+const path = require("path");
 const TelegramBot = require("node-telegram-bot-api");
 
-// Agar flag.js aapke paas hai toh isko rakhiye, warna comment kar dena
+// Flag utility
 let getFlagEmoji;
 try {
   getFlagEmoji = require("./src/utils/flag");
 } catch {
-  getFlagEmoji = () => "🌍"; // Fallback emoji agar flag.js na mile
+  getFlagEmoji = () => "🌍"; 
 }
 
 // ==============================
 // CONFIG
 // ==============================
-
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
-const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
-const TARGET_URL = "https://www.rebirthcharity.com/Report/AutoPoolTeam"; // 🚨 Target URL set kiya
+const TARGET_URL = "https://www.rebirthcharity.com/Home/GlobalTeam"; // 🚨 Updated URL
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true, filepath: false });
 
@@ -30,16 +29,29 @@ let queue = [];
 let knownIds = new Set();
 
 // ==============================
+// BROWSER LOCK CLEANUP (Zombie Process Fix)
+// ==============================
+function cleanupLock() {
+  const lockFile = path.join(__dirname, "profile_watcher", "SingletonLock");
+  if (fs.existsSync(lockFile)) {
+    try {
+      fs.unlinkSync(lockFile);
+      console.log("🔓 Existing browser lock cleared.");
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+// ==============================
 // LOAD & SAVE IDs
 // ==============================
-
 try {
   if (fs.existsSync("sent.json")) {
     const data = fs.readFileSync("sent.json", "utf8");
     knownIds = new Set(data ? JSON.parse(data) : []);
   }
 } catch {
-  console.log("sent.json reset");
   fs.writeFileSync("sent.json", "[]");
 }
 
@@ -53,49 +65,10 @@ function saveIds() {
 }
 
 // ==============================
-// TELEGRAM SEND COMMANDS
-// ==============================
-
-bot.on("new_chat_members", (msg) => {
-  const chatId = msg.chat.id;
-  msg.new_chat_members.forEach((user) => {
-    const name = user.first_name || "User";
-    bot.sendMessage(
-      chatId,
-      `🎉 Welcome ${name} to Rebirth Charity!\n\n🚀 We're excited to have you here.\n\nStart your journey now 👇`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🚀 Open Rebirth Bot", url: "https://t.me/Rebirth_Charity_bot?start=app" }]
-          ]
-        }
-      }
-    );
-  });
-});
-
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(
-    msg.chat.id,
-    "🚀 Welcome to Rebirth Charity\n\nChoose how you want to open the app 👇",
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "📱 Open Mini App", web_app: { url: MINI_APP_URL } }],
-          [{ text: "🔓 Login from Browser", url: MINI_APP_URL }]
-        ]
-      }
-    }
-  );
-});
-
-// ==============================
 // TELEGRAM SENDER LOGIC
 // ==============================
-
 async function sendTelegram(user) {
   const flag = getFlagEmoji(user.country);
-
   const message = `
 🚀🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥🚀
 ━━━━━━━━━━━━━━━━━━
@@ -115,191 +88,92 @@ async function sendTelegram(user) {
 `;
 
   try {
-    await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        chat_id: CHAT_ID,
-        text: message,
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🚀 Join Rebirth Charity Now", url: "https://t.me/Rebirth_Charity_bot?start=app" }]
-          ]
-        }
+    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      chat_id: CHAT_ID,
+      text: message,
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "🚀 Join Now", url: "https://t.me/Rebirth_Charity_bot?start=app" }]]
       }
-    );
-    console.log("✅ Sent ID to Telegram:", user.id);
+    });
+    console.log("✅ Sent to Telegram:", user.id);
   } catch (err) {
     console.log("Telegram Error:", err.message);
   }
 }
 
 // ==============================
-// AUTO LOGIN FUNCTION (Updated for Dashboard Redirect)
+// MAIN WATCHER (Updated for Global Team Page)
 // ==============================
-
-async function autoLogin(page) {
-  try {
-    // 2-second delay to let the page settle before checking login box
-    await new Promise(r => setTimeout(r, 2000));
-    
-    const loginInput = await page.$("#txtusername");
-
-    if (loginInput) {
-      console.log("Session expired → Logging in...");
-
-      await page.waitForSelector("#txtusername", { timeout: 20000 });
-      await page.waitForSelector("input[type=password]", { timeout: 20000 });
-
-      await page.click("#txtusername", { clickCount: 3 });
-      await page.keyboard.press("Backspace");
-      await page.type("#txtusername", process.env.LOGIN_ID, { delay: 50 });
-
-      await page.click("input[type=password]", { clickCount: 3 });
-      await page.keyboard.press("Backspace");
-      await page.type("input[type=password]", process.env.LOGIN_PASS, { delay: 50 });
-
-      await page.keyboard.press("Enter");
-
-      await new Promise(r => setTimeout(r, 7000));
-
-      console.log("LOGIN SUCCESS");
-
-      // 🚨 FIX: Wapas table wale page par jao, dashboard par mat ruko!
-      console.log("Redirecting back to AutoPoolTeam page...");
-      await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-
-    } else {
-      console.log("Session active");
-    }
-  } catch (err) {
-    console.log("Login error:", err.message);
-  }
-}
-
-// ==============================
-// MAIN WATCHER
-// ==============================
-
 async function startWatcher() {
+  cleanupLock();
   let browser;
   try {
     browser = await puppeteer.launch({
       headless: true,
       userDataDir: "./profile_watcher",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-crash-reporter",
-        "--disable-blink-features=AutomationControlled"
-      ],
-      defaultViewport: null
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"]
     });
 
     const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(0);
+    page.setDefaultNavigationTimeout(60000);
 
-    // Browser/Page Crash Handlers
+    // Browser Crash Handlers
     browser.on("disconnected", () => {
-      console.log("Browser disconnected → restarting watcher");
+      console.log("Browser disconnected → restarting...");
       clearInterval(refreshLoop);
       setTimeout(startWatcher, 5000);
     });
 
-    page.on("error", async () => {
-      console.log("Page crashed → restarting browser");
-      try { await browser.close(); } catch {}
-      clearInterval(refreshLoop);
-      setTimeout(startWatcher, 5000);
-    });
+    console.log("🚀 WATCHER STARTED (URL: GlobalTeam)");
 
-    await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 0 });
-
-    console.log("🚀 WATCHER STARTED");
-
-    // Start mein pehle auto login check karo
-    await autoLogin(page);
-
-    // Har 20 seconds mein page refresh karke IDs nikalna
     refreshLoop = setInterval(async () => {
       try {
-        // 🚨 FIX: page.reload() ki jagah force goto TARGET_URL
-        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-        
-        // Ensure logged in
-        await autoLogin(page);
+        await page.goto(TARGET_URL, { waitUntil: "networkidle2" });
 
-        // Wait for table to load
-        await page.waitForSelector(".box-body table tbody tr", { timeout: 30000 });
-
+        // Extracting data from member-card-row
         const users = await page.evaluate(() => {
-          const rows = document.querySelectorAll(".box-body table tbody tr");
-          return [...rows].map(r => ({
-            sr: r.children[0]?.innerText.trim(),
-            country: r.children[2]?.innerText.trim(),
-            id: r.children[3]?.innerText.trim(),
-            name: r.children[4]?.innerText.trim()
-          }));
+          const cards = document.querySelectorAll(".member-card-row");
+          return [...cards].map(c => {
+            const idText = c.querySelector(".member-id-badge")?.innerText || "";
+            return {
+              id: idText.replace("ID : ", "").trim(),
+              name: c.querySelector(".member-name")?.innerText.trim() || "N/A",
+              country: c.querySelector(".member-country")?.innerText.trim() || "Unknown"
+            };
+          });
         });
 
-        // Naye users upar aaye iske liye sort
-        users.sort((a, b) => Number(b.sr) - Number(a.sr));
-
+        // Reverse check taaki purani IDs skip ho jayein aur naye upar se aayein
         for (const u of users) {
-          if (!u.id) continue;
-          if (!knownIds.has(u.id)) {
+          if (u.id && !knownIds.has(u.id)) {
             knownIds.add(u.id);
             saveIds();
             queue.push(u);
-            console.log("🆕 New User Found:", u.id);
+            console.log("🆕 New User Found:", u.id, u.name);
           }
         }
-
       } catch (err) {
-        if (err.message.includes("Execution context was destroyed")) {
-          console.log("Page navigating... retrying");
-          return;
-        }
-        console.log("Scrape error:", err.message);
-        
-        // 🚨 FIX: Agar table na mile, toh debug karne ke liye screenshot le lo
-        try {
-          await page.screenshot({ path: "error_screen.png", fullPage: true });
-          console.log("📸 Screenshot saved as error_screen.png for debugging.");
-        } catch(e) {}
+        console.log("Refresh/Scrape Error:", err.message);
       }
-    }, 20000); // 20 Seconds interval
+    }, 25000); // 25 seconds interval
 
   } catch (err) {
-    console.log("Browser error:", err.message);
-    console.log("Restarting in 10 seconds...");
+    console.log("Launch Error:", err.message);
     if (browser) await browser.close();
     setTimeout(startWatcher, 10000);
   }
 }
 
-// Start watching!
 startWatcher();
 
-// ==============================
-// SEND QUEUE PROCESSOR
-// ==============================
-// Har 15 seconds me queue se ek-ek karke Telegram par bhejega
+// Queue Processor (Every 10 seconds)
 setInterval(async () => {
   if (queue.length === 0) return;
   const user = queue.shift();
   await sendTelegram(user);
-}, 15000);
+}, 10000);
 
-// ==============================
-// GLOBAL ERROR HANDLER
-// ==============================
-process.on("uncaughtException", (err) => {
-  console.log("Uncaught:", err.message);
-});
-
-process.on("unhandledRejection", (err) => {
-  console.log("Unhandled:", err?.message || err);
-});
+// Global Handlers
+process.on("uncaughtException", (err) => console.log("Uncaught:", err.message));
+process.on("unhandledRejection", (err) => console.log("Unhandled:", err?.message || err));

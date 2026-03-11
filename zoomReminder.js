@@ -7,18 +7,18 @@ const CHAT_ID = process.env.CHAT_ID;
 
 const message1 = `🌍 REBIRTH CHARITY – DAILY ZOOM MEETING 🌍
 
-📅 Daily Zoom Meeting  
-⏰ Join Sharp at 09:00 PM (India Time)
+📅 Daily Zoom Meeting
+⏰ Join Sharp at 09:30 PM (India Time)
 
 🌎 International Time Schedule
 
-🇮🇳 India – 9:00 PM  
-🇦🇪 Dubai – 7:30 PM  
-🇧🇩 Bangladesh – 9:30 PM  
-🇱🇰 Sri Lanka – 9:00 PM  
-🇵🇰 Pakistan – 8:30 PM  
-🇬🇧 United Kingdom – 3:30 PM  
-🇺🇸 USA (New York) – 10:30 AM  
+🇮🇳 India – 9:30 PM
+🇦🇪 Dubai – 8:00 PM
+🇧🇩 Bangladesh – 10:00 PM
+🇱🇰 Sri Lanka – 9:30 PM
+🇵🇰 Pakistan – 9:00 PM
+🇬🇧 United Kingdom – 4:00 PM
+🇺🇸 USA (New York) – 11:00 AM
 
 🔗 Join Zoom Meeting:
 https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
