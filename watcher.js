@@ -7,7 +7,6 @@ const fs = require("fs");
 const path = require("path");
 const TelegramBot = require("node-telegram-bot-api");
 
-// Flag utility
 let getFlagEmoji;
 try {
   getFlagEmoji = require("./src/utils/flag");
@@ -15,37 +14,16 @@ try {
   getFlagEmoji = () => "🌍"; 
 }
 
-// ==============================
-// CONFIG
-// ==============================
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
-const TARGET_URL = "https://www.rebirthcharity.com/Home/GlobalTeam"; // 🚨 Updated URL
+const TARGET_URL = "https://www.rebirthcharity.com/Home/GlobalTeam"; 
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true, filepath: false });
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 let refreshLoop;
 let queue = [];
 let knownIds = new Set();
 
-// ==============================
-// BROWSER LOCK CLEANUP (Zombie Process Fix)
-// ==============================
-function cleanupLock() {
-  const lockFile = path.join(__dirname, "profile_watcher", "SingletonLock");
-  if (fs.existsSync(lockFile)) {
-    try {
-      fs.unlinkSync(lockFile);
-      console.log("🔓 Existing browser lock cleared.");
-    } catch (e) {
-      // ignore
-    }
-  }
-}
-
-// ==============================
-// LOAD & SAVE IDs
-// ==============================
 try {
   if (fs.existsSync("sent.json")) {
     const data = fs.readFileSync("sent.json", "utf8");
@@ -56,17 +34,9 @@ try {
 }
 
 function saveIds() {
-  const arr = [...knownIds];
-  if (arr.length > 5000) {
-    const trimmed = arr.slice(-3000);
-    knownIds = new Set(trimmed);
-  }
   fs.writeFileSync("sent.json", JSON.stringify([...knownIds], null, 2));
 }
 
-// ==============================
-// TELEGRAM SENDER LOGIC
-// ==============================
 async function sendTelegram(user) {
   const flag = getFlagEmoji(user.country);
   const message = `
@@ -79,12 +49,7 @@ async function sendTelegram(user) {
 ━━━━━━━━━━━━━━━━━━
 ⏰ <b>Date & Time:</b> ${new Date().toLocaleString()}
 
-🎉 <b>Congratulations & Welcome to REBIRTH CHARITY!</b>
-
-💰 <i>Start your journey and grow with our Rebirth charity community.</i>
-━━━━━━━━━━━━━━━━━━
-🔥 <b>More leaders are joining every day!</b>
-🚀 <b>Don't miss the opportunity – Join Now!</b>
+🎉 <b>Congratulations & Welcome!</b>
 `;
 
   try {
@@ -92,74 +57,72 @@ async function sendTelegram(user) {
       chat_id: CHAT_ID,
       text: message,
       parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: [[{ text: "🚀 Join Now", url: "https://t.me/Rebirth_Charity_bot?start=app" }]]
-      }
     });
-    console.log("✅ Sent to Telegram:", user.id);
+    console.log("✅ Message Sent:", user.id);
   } catch (err) {
-    console.log("Telegram Error:", err.message);
+    console.log("Telegram Error");
   }
 }
 
-// ==============================
-// MAIN WATCHER (Updated for Global Team Page)
-// ==============================
 async function startWatcher() {
-  cleanupLock();
+  // Lock clear
+  const lock = path.join(__dirname, "profile_watcher", "SingletonLock");
+  if (fs.existsSync(lock)) { try { fs.unlinkSync(lock); } catch(e){} }
+
   let browser;
   try {
     browser = await puppeteer.launch({
       headless: true,
       userDataDir: "./profile_watcher",
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"]
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
 
     const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(60000);
+    
+    // 1. Realistic User-Agent add kiya taaki timeout kam ho
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-    // Browser Crash Handlers
-    browser.on("disconnected", () => {
-      console.log("Browser disconnected → restarting...");
-      clearInterval(refreshLoop);
-      setTimeout(startWatcher, 5000);
-    });
+    // 2. Timeout badha kar 2 minute (120000ms) kiya
+    page.setDefaultNavigationTimeout(120000);
 
     console.log("🚀 WATCHER STARTED (URL: GlobalTeam)");
 
     refreshLoop = setInterval(async () => {
       try {
-        await page.goto(TARGET_URL, { waitUntil: "networkidle2" });
+        console.log("Refreshing page...");
+        
+        // 3. 'networkidle2' ki jagah 'domcontentloaded' use kiya taaki jaldi load ho
+        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 120000 });
 
-        // Extracting data from member-card-row
+        // Table load hone ka wait karein
+        await page.waitForSelector(".member-card-row", { timeout: 10000 }).catch(() => null);
+
         const users = await page.evaluate(() => {
           const cards = document.querySelectorAll(".member-card-row");
-          return [...cards].map(c => {
-            const idText = c.querySelector(".member-id-badge")?.innerText || "";
-            return {
-              id: idText.replace("ID : ", "").trim(),
-              name: c.querySelector(".member-name")?.innerText.trim() || "N/A",
-              country: c.querySelector(".member-country")?.innerText.trim() || "Unknown"
-            };
-          });
+          return [...cards].map(c => ({
+            id: (c.querySelector(".member-id-badge")?.innerText || "").replace("ID : ", "").trim(),
+            name: c.querySelector(".member-name")?.innerText.trim() || "N/A",
+            country: c.querySelector(".member-country")?.innerText.trim() || "Unknown"
+          }));
         });
 
-        // Reverse check taaki purani IDs skip ho jayein aur naye upar se aayein
+        if (users.length === 0) console.log("⚠️ No members found on page.");
+
         for (const u of users) {
           if (u.id && !knownIds.has(u.id)) {
             knownIds.add(u.id);
             saveIds();
             queue.push(u);
-            console.log("🆕 New User Found:", u.id, u.name);
+            console.log("🆕 New User:", u.id);
           }
         }
       } catch (err) {
-        console.log("Refresh/Scrape Error:", err.message);
+        console.log("⏳ Connection slow (Retrying):", err.message);
       }
-    }, 25000); // 25 seconds interval
+    }, 40000); // Interval thoda badha kar 40 sec kiya taaki load hone ka time mile
 
   } catch (err) {
-    console.log("Launch Error:", err.message);
+    console.log("Launch error:", err.message);
     if (browser) await browser.close();
     setTimeout(startWatcher, 10000);
   }
@@ -167,13 +130,6 @@ async function startWatcher() {
 
 startWatcher();
 
-// Queue Processor (Every 10 seconds)
 setInterval(async () => {
-  if (queue.length === 0) return;
-  const user = queue.shift();
-  await sendTelegram(user);
-}, 10000);
-
-// Global Handlers
-process.on("uncaughtException", (err) => console.log("Uncaught:", err.message));
-process.on("unhandledRejection", (err) => console.log("Unhandled:", err?.message || err));
+  if (queue.length > 0) await sendTelegram(queue.shift());
+}, 5000);
