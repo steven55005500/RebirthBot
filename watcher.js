@@ -24,6 +24,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 let queue = [];
 let knownIds = new Set();
 
+// load sent ids
 if (fs.existsSync("sent.json")) {
   knownIds = new Set(JSON.parse(fs.readFileSync("sent.json")));
 }
@@ -35,20 +36,31 @@ function saveIds() {
 async function sendTelegram(user) {
 
   const flag = getFlagEmoji(user.country);
+  const dateStr = new Date().toLocaleString("en-US");
 
-  const message = `🚀 <b>NEW MEMBER JOINED</b>
+  const message = `🚀 <b>REBIRTH CHARITY – NEW MEMBER</b>
 
 👤 Name: ${user.name}
 🆔 ID: ${user.id}
 🌍 Country: ${flag} ${user.country}
-💲 Donate: $30`;
+💲 Donate: $30
+⏰ ${dateStr}`;
 
   try {
-    await bot.sendMessage(CHAT_ID, message, { parse_mode: "HTML" });
-    console.log("✅ Sent:", user.id);
+
+    await bot.sendMessage(CHAT_ID, message, {
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    });
+
+    console.log("✅ Telegram Sent:", user.id);
+
   } catch (err) {
+
     console.log("Telegram Error:", err.message);
+
   }
+
 }
 
 const delay = (t) => new Promise(r => setTimeout(r, t));
@@ -60,50 +72,96 @@ async function startWatcher() {
   try {
 
     browser = await puppeteer.launch({
+
       headless: "new",
+
       args: [
+
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-gpu",
-        "--window-size=1920,1080"
-      ]
+        "--disable-blink-features=AutomationControlled",
+        "--window-size=1920,1080",
+
+        "--proxy-server=http://31.59.20.176:6754"
+
+      ],
+
+      ignoreHTTPSErrors: true
+
     });
 
     const page = await browser.newPage();
+
+    await page.authenticate({
+      username: "uoopudbo",
+      password: "y7jfgvy7l5f2"
+    });
 
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
     );
 
-    console.log("🚀 WATCHER ACTIVE");
+    await page.setViewport({ width: 1920, height: 1080 });
+
+    // hide automation
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => false });
+    });
+
+    // faster loading
+    await page.setRequestInterception(true);
+
+    page.on("request", (req) => {
+
+      const type = req.resourceType();
+
+      if (
+        type === "image" ||
+        type === "font" ||
+        type === "media" ||
+        type === "stylesheet"
+      ) {
+
+        req.abort();
+
+      } else {
+
+        req.continue();
+
+      }
+
+    });
+
+    console.log("🚀 WATCHER ACTIVE - Monitoring via Proxy");
+
+    let retry = 0;
 
     while (true) {
 
       try {
 
-        console.log("🔄 Checking members...");
+        console.log("🔄 Checking for new members...");
 
         await page.goto(TARGET_URL, {
+
           waitUntil: "domcontentloaded",
-          timeout: 60000
+          timeout: 45000
+
         });
 
         await page.waitForSelector(".member-card-row", { timeout: 30000 });
 
-        const users = await page.evaluate(() => {
+        const users = await page.$$eval(".member-card-row", rows =>
+          rows.map(r => ({
+            id: r.querySelector(".member-id-badge")?.innerText.replace("ID : ", "").trim(),
+            name: r.querySelector(".member-name")?.innerText.trim(),
+            country: r.querySelector(".member-country")?.innerText.trim()
+          }))
+        );
 
-          const cards = document.querySelectorAll(".member-card-row");
-
-          return Array.from(cards).map(c => ({
-            id: (c.querySelector(".member-id-badge")?.innerText || "").replace("ID : ", "").trim(),
-            name: c.querySelector(".member-name")?.innerText.trim(),
-            country: c.querySelector(".member-country")?.innerText.trim()
-          }));
-
-        });
-
-        console.log("Members found:", users.length);
+        console.log("Members Found:", users.length);
 
         for (const u of users) {
 
@@ -120,11 +178,28 @@ async function startWatcher() {
 
         }
 
-        await delay(30000);
+        retry = 0;
+
+        await delay(15000);
 
       } catch (err) {
 
-        console.log("Page Error:", err.message);
+        retry++;
+
+        console.log("⏳ Page Error:", err.message);
+
+        if (retry >= 5) {
+
+          console.log("⚠️ Restarting Browser...");
+
+          await browser.close();
+
+          startWatcher();
+
+          return;
+
+        }
+
         await delay(15000);
 
       }
@@ -133,7 +208,7 @@ async function startWatcher() {
 
   } catch (err) {
 
-    console.log("Watcher Crash:", err.message);
+    console.log("❌ Watcher Crash:", err.message);
 
     if (browser) await browser.close();
 
@@ -145,6 +220,7 @@ async function startWatcher() {
 
 startWatcher();
 
+// telegram queue
 setInterval(async () => {
 
   if (queue.length > 0) {
