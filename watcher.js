@@ -102,12 +102,19 @@ async function startWatcher() {
         "--disable-blink-features=AutomationControlled", 
         "--window-size=1920,1080", 
         "--disable-features=IsolateOrigins,site-per-process",
-        "--disable-ipv6" // <-- IPv6 block bypass
+        "--disable-ipv6",
+        "--proxy-server=http://31.59.20.176:6754" // 🌟 PROXY IP AUR PORT YAHAN HAI
       ],
       ignoreHTTPSErrors: true
     });
 
     const page = await browser.newPage();
+    
+    // 🌟 PROXY USERNAME AUR PASSWORD YAHAN HAI
+    await page.authenticate({
+        username: 'uoopudbo',
+        password: 'y7jfgvy7l5f2'
+    });
     
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     await page.setViewport({ width: 1920, height: 1080 });
@@ -127,19 +134,16 @@ async function startWatcher() {
         }
     });
 
-    // TIMEOUT DISABLED: Ab ye page load hone ka infinite wait karega
     page.setDefaultNavigationTimeout(0); 
-    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Infinite Wait Mode)");
+    console.log("🚀 WATCHER ACTIVE - Monitoring via UK Proxy...");
 
     while (true) {
       try {
         console.log("🔄 Checking for new members... (Waiting for page to load)");
         
-        // timeout: 0 lagaya hai taaki ye kabhi ERR_TIMED_OUT na de
         await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 0 });
 
         try {
-            // Element dhoondhne ke liye 30 seconds wait karega
             await page.waitForSelector(".member-card-row", { timeout: 30000 });
         } catch (e) {
             console.log("⚠️ Elements not found immediately, checking anyway...");
