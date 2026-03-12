@@ -54,14 +54,34 @@ let listenerStarted = false;
 
 // ================= FILTER =================
 
+// ================= FILTER =================
+
 function isValidAmount(amount){
+    
+    // Sirf multiple of 30 allow honge (jaise 30, 60, 90, 120, 150)
+    if(amount < 30) return false;
+    if(amount > 150) return false;
+    if(amount % 30 !== 0) return false;
 
-if(amount < 30) return false;
-if(amount > 150) return false;
-if(amount % 30 !== 0) return false;
+    // ----- NAYA LOGIC YAHAN HAI -----
+    
+    // Agar amount 30 ya 60 hai, toh 100% chance pass (Hamesha bhejega)
+    if(amount === 30 || amount === 60) {
+        return true; 
+    }
 
-return true;
+    // Agar amount 90, 120 ya 150 hai, toh sirf 30% chance hai pass hone ka (Kam bhejega)
+    if(amount > 60) {
+        const randomChance = Math.random(); // 0 se 1 ke beech random number deta hai
+        
+        if(randomChance <= 0.30) { 
+            return true; // 30% chance pass
+        } else {
+            return false; // 70% chance ignore (fail)
+        }
+    }
 
+    return true; // Backup case
 }
 
 // ================= PAST SCAN =================
@@ -228,13 +248,12 @@ restartListener();
 
 // ================= RANDOM DELAY =================
 
+// ================= RANDOM DELAY =================
+
 function randomDelay(){
-
-const min = 1 * 60 * 1000;
-const max = 2 * 60 * 1000;
-
-return Math.floor(Math.random() * (max - min + 1)) + min;
-
+    const min = 15 * 1000; // 15 Seconds
+    const max = 30 * 1000; // 30 Seconds
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // ================= SEND LOOP =================

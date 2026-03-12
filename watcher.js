@@ -1,235 +1,416 @@
 require("dotenv").config();
+require("./zoomReminder");
 
-const puppeteer = require("puppeteer-extra");
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
-puppeteer.use(StealthPlugin());
-
+const puppeteer = require("puppeteer");
+const axios = require("axios");
 const fs = require("fs");
-const path = require("path");
 const TelegramBot = require("node-telegram-bot-api");
 
-let getFlagEmoji;
-try {
-  getFlagEmoji = require("./src/utils/flag");
-} catch {
-  getFlagEmoji = () => "🌍";
-}
+const getFlagEmoji = require("./src/utils/flag");
+
+// ==============================
+// CONFIG
+// ==============================
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
-const TARGET_URL = "https://www.rebirthcharity.com/Home/GlobalTeam";
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const MINI_APP_URL = "https://www.rebirthcharity.com/Login/Login";
 
-let queue = [];
+const bot = new TelegramBot(BOT_TOKEN,{
+ polling:true,
+ filepath:false
+});
+
+let refreshLoop;
+// ==============================
+// CHANNEL JOIN WELCOME
+// ==============================
+
+bot.on("new_chat_members",(msg)=>{
+
+const chatId = msg.chat.id;
+
+msg.new_chat_members.forEach((user)=>{
+
+const name = user.first_name || "User";
+
+bot.sendMessage(
+chatId,
+`🎉 Welcome ${name} to Rebirth Charity!
+
+🚀 We're excited to have you here.
+
+Start your journey now 👇`,
+{
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"🚀 Open Rebirth Bot",
+url:"https://t.me/Rebirth_Charity_bot?start=app"
+}
+]
+]
+}
+}
+);
+
+});
+
+});
+// ==============================
+// START COMMAND
+// ==============================
+
+bot.onText(/\/start/, (msg) => {
+
+bot.sendMessage(
+msg.chat.id,
+"🚀 Welcome to Rebirth Charity\n\nChoose how you want to open the app 👇",
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"📱 Open Mini App",
+web_app:{ url: MINI_APP_URL }
+}
+],
+
+[
+{
+text:"🔓 Login from Browser",
+url: MINI_APP_URL
+}
+]
+
+]
+}
+}
+);
+
+});
+
+
+// ==============================
+// LOAD IDS
+// ==============================
+
 let knownIds = new Set();
 
-// load sent ids
-if (fs.existsSync("sent.json")) {
-  knownIds = new Set(JSON.parse(fs.readFileSync("sent.json")));
-}
+try{
 
-function saveIds() {
-  fs.writeFileSync("sent.json", JSON.stringify([...knownIds], null, 2));
-}
+if(fs.existsSync("sent.json")){
 
-async function sendTelegram(user) {
-
-  const flag = getFlagEmoji(user.country);
-  const dateStr = new Date().toLocaleString("en-US");
-
-  const message = `🚀 <b>REBIRTH CHARITY – NEW MEMBER</b>
-
-👤 Name: ${user.name}
-🆔 ID: ${user.id}
-🌍 Country: ${flag} ${user.country}
-💲 Donate: $30
-⏰ ${dateStr}`;
-
-  try {
-
-    await bot.sendMessage(CHAT_ID, message, {
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    });
-
-    console.log("✅ Telegram Sent:", user.id);
-
-  } catch (err) {
-
-    console.log("Telegram Error:", err.message);
-
-  }
+const data = fs.readFileSync("sent.json","utf8");
+knownIds = new Set(data ? JSON.parse(data) : []);
 
 }
 
-const delay = (t) => new Promise(r => setTimeout(r, t));
+}catch{
 
-async function startWatcher() {
+console.log("sent.json reset");
+fs.writeFileSync("sent.json","[]");
 
-  let browser;
+}
 
-  try {
+// ==============================
+// SAVE IDS
+// ==============================
 
-    browser = await puppeteer.launch({
+function saveIds(){
 
-      headless: "new",
+const arr = [...knownIds];
 
-      args: [
+if(arr.length > 5000){
 
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-blink-features=AutomationControlled",
-        "--window-size=1920,1080",
+const trimmed = arr.slice(-3000);
+knownIds = new Set(trimmed);
 
-        "--proxy-server=http://31.59.20.176:6754"
+}
 
-      ],
+fs.writeFileSync(
+"sent.json",
+JSON.stringify([...knownIds],null,2)
+);
 
-      ignoreHTTPSErrors: true
+}
 
-    });
+let queue = [];
 
-    const page = await browser.newPage();
+// ==============================
+// TELEGRAM SEND
+// ==============================
 
-    await page.authenticate({
-      username: "uoopudbo",
-      password: "y7jfgvy7l5f2"
-    });
+async function sendTelegram(user){
 
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-    );
+const flag = getFlagEmoji(user.country);
 
-    await page.setViewport({ width: 1920, height: 1080 });
+const message = `
+🚀🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥🚀
+━━━━━━━━━━━━━━━━━━
+👤 <b>Name:</b> ${user.name}
+🆔 <b>User ID:</b> <code>${user.id}</code>
+🌍 <b>Country:</b> ${flag} ${user.country}
+💲 <b>Donate:</b> $30
+━━━━━━━━━━━━━━━━━━
+⏰ <b>Date & Time:</b> ${new Date().toLocaleString()}
 
-    // hide automation
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, "webdriver", { get: () => false });
-    });
+🎉 <b>Congratulations & Welcome to REBIRTH CHARITY!</b>
 
-    // faster loading
-    await page.setRequestInterception(true);
+💰 <i>Start your journey and grow with our Rebirth charity community.</i>
+━━━━━━━━━━━━━━━━━━
+🔥 <b>More leaders are joining every day!</b>
+🚀 <b>Don't miss the opportunity – Join Now!</b>
+`;
 
-    page.on("request", (req) => {
+try{
 
-      const type = req.resourceType();
+await axios.post(
+`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+{
+chat_id:CHAT_ID,
+text:message,
+parse_mode:"HTML",
 
-      if (
-        type === "image" ||
-        type === "font" ||
-        type === "media" ||
-        type === "stylesheet"
-      ) {
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"🚀 Join Rebirth Charity Now",
+url:"https://t.me/Rebirth_Charity_bot?start=app"
+}
+]
+]
+}
 
-        req.abort();
+}
+);
 
-      } else {
+console.log("Sent:",user.id);
 
-        req.continue();
+}catch(err){
 
-      }
+console.log("Telegram Error:",err.message);
 
-    });
+}
 
-    console.log("🚀 WATCHER ACTIVE - Monitoring via Proxy");
+}
 
-    let retry = 0;
 
-    while (true) {
+async function safeReload(page){
 
-      try {
+while(true){
 
-        console.log("🔄 Checking for new members...");
+try{
 
-        await page.goto(TARGET_URL, {
+await page.reload({
+waitUntil:"domcontentloaded",
+timeout:60000
+});
 
-          waitUntil: "domcontentloaded",
-          timeout: 45000
+return;
 
-        });
+}catch(err){
 
-        await page.waitForSelector(".member-card-row", { timeout: 30000 });
+console.log("Site unreachable → retrying in 15 seconds");
 
-        const users = await page.$$eval(".member-card-row", rows =>
-          rows.map(r => ({
-            id: r.querySelector(".member-id-badge")?.innerText.replace("ID : ", "").trim(),
-            name: r.querySelector(".member-name")?.innerText.trim(),
-            country: r.querySelector(".member-country")?.innerText.trim()
-          }))
-        );
+await new Promise(r=>setTimeout(r,15000));
 
-        console.log("Members Found:", users.length);
+}
 
-        for (const u of users) {
+}
 
-          if (u.id && !knownIds.has(u.id)) {
+}
 
-            knownIds.add(u.id);
-            saveIds();
+// ==============================
+// MAIN WATCHER
+// ==============================
 
-            queue.push(u);
+async function startWatcher(){
 
-            console.log("🆕 New Member:", u.id);
+try{
 
-          }
+const browser = await puppeteer.launch({
 
-        }
 
-        retry = 0;
+headless:true,
+userDataDir:"./profile",
+args:[
+"--no-sandbox",
+"--disable-setuid-sandbox",
+"--disable-dev-shm-usage",
+"--disable-gpu"
+]
 
-        await delay(15000);
+});
 
-      } catch (err) {
+browser.on("disconnected", () => {
 
-        retry++;
+console.log("Browser disconnected → restarting watcher");
 
-        console.log("⏳ Page Error:", err.message);
+clearInterval(refreshLoop);
 
-        if (retry >= 5) {
+setTimeout(startWatcher,5000);
 
-          console.log("⚠️ Restarting Browser...");
+});
 
-          await browser.close();
 
-          startWatcher();
 
-          return;
+const page = await browser.newPage();
 
-        }
+await page.setDefaultNavigationTimeout(0);
 
-        await delay(15000);
+// page crash
+page.on("error", async () => {
 
-      }
+console.log("Page crashed → restarting watcher");
 
-    }
+try{
+await browser.close();
+}catch{}
 
-  } catch (err) {
+setTimeout(startWatcher,5000);
 
-    console.log("❌ Watcher Crash:", err.message);
+});
 
-    if (browser) await browser.close();
+// page javascript error
+page.on("pageerror",(err)=>{
+console.log("Page error:",err.message);
+});
 
-    setTimeout(startWatcher, 5000);
 
-  }
+await page.goto(
+"https://www.rebirthcharity.com/Report/AutoPoolTeam",
+{
+waitUntil:"domcontentloaded",
+timeout:0
+}
+);
+
+console.log("LIVE WATCH STARTED");
+
+refreshLoop = setInterval(async()=>{
+
+try{
+
+await safeReload(page);
+
+await new Promise(r=>setTimeout(r,3000));
+
+const loginInput = await page.$("#txtusername");
+
+if(loginInput){
+
+console.log("Session expired → Logging in");
+
+await page.click("#txtusername",{clickCount:3});
+await page.keyboard.press("Backspace");
+
+await page.type("#txtusername",process.env.LOGIN_ID,{delay:50});
+
+await page.click("input[type=password]",{clickCount:3});
+await page.keyboard.press("Backspace");
+
+await page.type("input[type=password]",process.env.LOGIN_PASS,{delay:50});
+
+await page.keyboard.press("Enter");
+
+await page.waitForNavigation({
+waitUntil:"domcontentloaded",
+timeout:0
+});
+
+console.log("LOGIN SUCCESS");
+
+}
+
+console.log("Page refreshed");
+
+const users = await page.evaluate(()=>{
+
+const rows = document.querySelectorAll("table tbody tr");
+
+return [...rows].map(r=>({
+
+sr:r.children[0]?.innerText.trim(),
+country:r.children[2]?.innerText.trim(),
+id:r.children[3]?.innerText.trim(),
+name:r.children[4]?.innerText.trim()
+
+}));
+
+});
+
+users.sort((a,b)=>Number(b.sr)-Number(a.sr));
+
+for(const u of users){
+
+if(!u.id) continue;
+
+if(!knownIds.has(u.id)){
+
+knownIds.add(u.id);
+saveIds();
+
+queue.push(u);
+
+console.log("New:",u.id);
+
+}
+
+}
+
+}catch(err){
+
+if(err.message.includes("Execution context was destroyed")){
+console.log("Page navigating... retrying");
+return;
+}
+
+console.log("Fetch error:",err.message);
+
+}
+
+},20000);
+
+}catch(err){
+
+console.log("Watcher crash:",err);
+console.log("Restarting watcher in 10 seconds...");
+
+setTimeout(startWatcher,10000);
+
+}
 
 }
 
 startWatcher();
 
-// telegram queue
-setInterval(async () => {
+// ==============================
+// SEND QUEUE
+// ==============================
 
-  if (queue.length > 0) {
+setInterval(async()=>{
 
-    await sendTelegram(queue.shift());
+if(queue.length===0) return;
 
-  }
+const user = queue.shift();
 
-}, 3000);
+await sendTelegram(user);
 
-process.on("uncaughtException", err => console.log("System Error:", err.message));
-process.on("unhandledRejection", err => console.log("System Rejection:", err.message));
+},15000);
+
+// ==============================
+// GLOBAL ERROR HANDLER
+// ==============================
+
+process.on("uncaughtException",(err)=>{
+console.log("Uncaught:",err.message);
+});
+
+process.on("unhandledRejection",(err)=>{
+console.log("Unhandled:",err);
+});
