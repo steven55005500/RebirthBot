@@ -79,7 +79,7 @@ async function sendTelegram(user) {
   }
 }
 
-// Function to generate random delays to act like a human
+// Function to generate random delays
 const delay = (time) => new Promise(resolve => setTimeout(resolve, time));
 
 async function startWatcher() {
@@ -99,29 +99,25 @@ async function startWatcher() {
         "--disable-setuid-sandbox", 
         "--disable-dev-shm-usage", 
         "--disable-gpu",
-        "--disable-blink-features=AutomationControlled", // Anti-bot bypass
-        "--window-size=1920,1080", // Real screen size
-        "--disable-features=IsolateOrigins,site-per-process" // Prevent cross-origin blocks
+        "--disable-blink-features=AutomationControlled", 
+        "--window-size=1920,1080", 
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-ipv6" // <-- IPv6 block bypass
       ],
       ignoreHTTPSErrors: true
     });
 
     const page = await browser.newPage();
     
-    // Set a very standard Windows Chrome User Agent
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-    
-    // Set view port to look like a desktop
     await page.setViewport({ width: 1920, height: 1080 });
     
-    // Inject custom JS to hide webdriver (Extra stealth)
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
       Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
       Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
     });
 
-    // We don't need heavy images/fonts, blocking them makes it faster but allows JS
     await page.setRequestInterception(true);
     page.on('request', (req) => {
         if (['image', 'font', 'media'].includes(req.resourceType())) {
@@ -131,19 +127,20 @@ async function startWatcher() {
         }
     });
 
-    page.setDefaultNavigationTimeout(120000); // 2 Min timeout
-    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Ultimate Stealth)");
+    // TIMEOUT DISABLED: Ab ye page load hone ka infinite wait karega
+    page.setDefaultNavigationTimeout(0); 
+    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Infinite Wait Mode)");
 
     while (true) {
       try {
-        console.log("🔄 Checking for new members...");
+        console.log("🔄 Checking for new members... (Waiting for page to load)");
         
-        // waitUntil: 'domcontentloaded' is much faster and bypasses long loading spinners
-        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+        // timeout: 0 lagaya hai taaki ye kabhi ERR_TIMED_OUT na de
+        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 0 });
 
-        // Wait specifically for the member cards to appear (max 15 seconds wait)
         try {
-            await page.waitForSelector(".member-card-row", { timeout: 15000 });
+            // Element dhoondhne ke liye 30 seconds wait karega
+            await page.waitForSelector(".member-card-row", { timeout: 30000 });
         } catch (e) {
             console.log("⚠️ Elements not found immediately, checking anyway...");
         }
@@ -171,7 +168,6 @@ async function startWatcher() {
             console.log("ℹ️ Site loaded, but no members found on page.");
         }
 
-        // Random wait between 25-35 seconds to look human
         const randomWait = Math.floor(Math.random() * (35000 - 25000 + 1) + 25000);
         await delay(randomWait);
 
