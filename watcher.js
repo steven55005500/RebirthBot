@@ -1,7 +1,11 @@
 require("dotenv").config();
-require("./zoomReminder"); // Agar ye file local par nahi hai, toh isse comment kar dena test karte waqt
+// require("./zoomReminder"); // Agar ye file local par nahi hai, toh isse comment kar dena test karte waqt
 
-const puppeteer = require("puppeteer");
+// Puppeteer-extra use kiya hai taaki block na ho
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
+
 const fs = require("fs");
 const path = require("path");
 const TelegramBot = require("node-telegram-bot-api");
@@ -42,7 +46,6 @@ async function sendTelegram(user) {
   // Date format set for exact output like "3/11/2026, 12:08:02 PM"
   const dateStr = new Date().toLocaleString("en-US");
 
-  // Updated Message Template exactly like screenshot
   const message = `🚀 🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥 🚀
 ━━━━━━━━━━━━━━━━━━
 👤 <b>Name:</b> ${user.name}
@@ -59,8 +62,6 @@ async function sendTelegram(user) {
 🔥 More leaders are joining every day!
 🚀 Don't miss the opportunity – Join Now!`;
 
-  // Inline Keyboard Button configuration (UPDATED)
-// Inline Keyboard Button configuration (100% FIXED)
   const options = {
     parse_mode: "HTML",
     disable_web_page_preview: true,
@@ -101,38 +102,34 @@ async function startWatcher() {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: true,
+      headless: "new", // Naya headless mode server par jyada stable hai
       userDataDir: "./profile",
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+      args: [
+        "--no-sandbox", 
+        "--disable-setuid-sandbox", 
+        "--disable-dev-shm-usage", 
+        "--disable-gpu",
+        "--disable-blink-features=AutomationControlled" // Ye line bhi site ko bewakoof banati hai
+      ]
     });
 
     const page = await browser.newPage();
     
-    // ⚡ SUPER SPEED: Block everything except HTML & JS
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const type = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
-        req.abort();
-      } else {
-        req.continue();
-      }
-    });
-
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    // Server par thoda random User-Agent lagaya hai
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
     
-    // Site slow ho toh bhi wait karega (2 minute max)
-    page.setDefaultNavigationTimeout(120000);
+    // Timeout thoda badha diya hai server ke hisaab se
+    page.setDefaultNavigationTimeout(180000);
 
-    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Fast Mode)");
+    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Stealth Mode)");
 
     // Stable Loop
     while (true) {
       try {
         console.log("🔄 Checking for new members...");
         
-        // 'domcontentloaded' se page thoda fast return dega
-        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+        // networkidle2 use kiya hai taaki site puri load ho
+        await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 90000 });
 
         const users = await page.evaluate(() => {
           const cards = document.querySelectorAll(".member-card-row");
@@ -152,14 +149,16 @@ async function startWatcher() {
               console.log("🆕 New User:", u.id);
             }
           }
+        } else {
+            console.log("ℹ️ No new members found on page this check.");
         }
 
         // Har 30 second baad refresh karega
         await new Promise(r => setTimeout(r, 30000));
 
       } catch (err) {
-        console.log("⏳ Site unreachable or slow, retrying in 10s...");
-        await new Promise(r => setTimeout(r, 10000));
+        console.log("⏳ Site unreachable or slow, retrying in 15s...");
+        await new Promise(r => setTimeout(r, 15000));
       }
     }
 
@@ -173,13 +172,12 @@ async function startWatcher() {
 // Start Processing
 startWatcher();
 
-// Telegram Queue Processor (Har 3 sec mein)
+// Telegram Queue Processor
 setInterval(async () => {
   if (queue.length > 0) {
     await sendTelegram(queue.shift());
   }
 }, 3000);
 
-// Prevention from unexpected crashes
 process.on("uncaughtException", (err) => console.log("System Error:", err.message));
 process.on("unhandledRejection", (err) => console.log("System Rejection:", err.message));
