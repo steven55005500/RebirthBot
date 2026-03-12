@@ -1,7 +1,7 @@
 require("dotenv").config();
-// require("./zoomReminder"); // Agar ye file local par nahi hai, toh isse comment kar dena test karte waqt
+// require("./zoomReminder"); // Local test ke bina ise comment rakhein
 
-// Puppeteer-extra use kiya hai taaki block na ho
+// Anti-bot plugins setup
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(StealthPlugin());
@@ -42,8 +42,6 @@ function saveIds() {
 
 async function sendTelegram(user) {
   const flag = getFlagEmoji(user.country);
-  
-  // Date format set for exact output like "3/11/2026, 12:08:02 PM"
   const dateStr = new Date().toLocaleString("en-US");
 
   const message = `🚀 🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥 🚀
@@ -67,18 +65,8 @@ async function sendTelegram(user) {
     disable_web_page_preview: true,
     reply_markup: {
       inline_keyboard: [
-        [
-          { 
-            text: "🚀 Join Rebirth Charity Now", 
-            url: "https://t.me/Rebirth_Charity_bot?start=join" 
-          }
-        ],
-        [
-          { 
-            text: "🌐 Open in Browser", 
-            url: "https://www.rebirthcharity.com" 
-          }
-        ]
+        [{ text: "🚀 Join Rebirth Charity Now", url: "https://t.me/Rebirth_Charity_bot?start=join" }],
+        [{ text: "🌐 Open in Browser", url: "https://www.rebirthcharity.com" }]
       ]
     }
   };
@@ -91,8 +79,10 @@ async function sendTelegram(user) {
   }
 }
 
+// Function to generate random delays to act like a human
+const delay = (time) => new Promise(resolve => setTimeout(resolve, time));
+
 async function startWatcher() {
-  // Lock cleaning
   const profilePath = path.join(__dirname, "profile");
   if (fs.existsSync(profilePath)) {
     const lock = path.join(profilePath, "SingletonLock");
@@ -102,34 +92,61 @@ async function startWatcher() {
   let browser;
   try {
     browser = await puppeteer.launch({
-      headless: "new", // Naya headless mode server par jyada stable hai
+      headless: "new",
       userDataDir: "./profile",
       args: [
         "--no-sandbox", 
         "--disable-setuid-sandbox", 
         "--disable-dev-shm-usage", 
         "--disable-gpu",
-        "--disable-blink-features=AutomationControlled" // Ye line bhi site ko bewakoof banati hai
-      ]
+        "--disable-blink-features=AutomationControlled", // Anti-bot bypass
+        "--window-size=1920,1080", // Real screen size
+        "--disable-features=IsolateOrigins,site-per-process" // Prevent cross-origin blocks
+      ],
+      ignoreHTTPSErrors: true
     });
 
     const page = await browser.newPage();
     
-    // Server par thoda random User-Agent lagaya hai
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+    // Set a very standard Windows Chrome User Agent
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     
-    // Timeout thoda badha diya hai server ke hisaab se
-    page.setDefaultNavigationTimeout(180000);
+    // Set view port to look like a desktop
+    await page.setViewport({ width: 1920, height: 1080 });
+    
+    // Inject custom JS to hide webdriver (Extra stealth)
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+    });
 
-    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Stealth Mode)");
+    // We don't need heavy images/fonts, blocking them makes it faster but allows JS
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+        if (['image', 'font', 'media'].includes(req.resourceType())) {
+            req.abort();
+        } else {
+            req.continue();
+        }
+    });
 
-    // Stable Loop
+    page.setDefaultNavigationTimeout(120000); // 2 Min timeout
+    console.log("🚀 WATCHER ACTIVE - Monitoring Global Team (Ultimate Stealth)");
+
     while (true) {
       try {
         console.log("🔄 Checking for new members...");
         
-        // networkidle2 use kiya hai taaki site puri load ho
-        await page.goto(TARGET_URL, { waitUntil: "networkidle2", timeout: 90000 });
+        // waitUntil: 'domcontentloaded' is much faster and bypasses long loading spinners
+        await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+
+        // Wait specifically for the member cards to appear (max 15 seconds wait)
+        try {
+            await page.waitForSelector(".member-card-row", { timeout: 15000 });
+        } catch (e) {
+            console.log("⚠️ Elements not found immediately, checking anyway...");
+        }
 
         const users = await page.evaluate(() => {
           const cards = document.querySelectorAll(".member-card-row");
@@ -141,6 +158,7 @@ async function startWatcher() {
         });
 
         if (users.length > 0) {
+          console.log(`✅ Found ${users.length} total members on page.`);
           for (const u of users) {
             if (u.id && !knownIds.has(u.id)) {
               knownIds.add(u.id);
@@ -150,15 +168,16 @@ async function startWatcher() {
             }
           }
         } else {
-            console.log("ℹ️ No new members found on page this check.");
+            console.log("ℹ️ Site loaded, but no members found on page.");
         }
 
-        // Har 30 second baad refresh karega
-        await new Promise(r => setTimeout(r, 30000));
+        // Random wait between 25-35 seconds to look human
+        const randomWait = Math.floor(Math.random() * (35000 - 25000 + 1) + 25000);
+        await delay(randomWait);
 
       } catch (err) {
-        console.log("⏳ Site unreachable or slow, retrying in 15s...");
-        await new Promise(r => setTimeout(r, 15000));
+        console.log(`⏳ Error loading page: ${err.message}. Retrying in 15s...`);
+        await delay(15000);
       }
     }
 
@@ -169,10 +188,8 @@ async function startWatcher() {
   }
 }
 
-// Start Processing
 startWatcher();
 
-// Telegram Queue Processor
 setInterval(async () => {
   if (queue.length > 0) {
     await sendTelegram(queue.shift());
