@@ -1,5 +1,5 @@
 require("dotenv").config();
-require("./zoomReminder");
+require("./zoomReminder"); // Agar ye file local par nahi hai, toh isse comment kar dena test karte waqt
 
 const puppeteer = require("puppeteer");
 const fs = require("fs");
@@ -38,24 +38,55 @@ function saveIds() {
 
 async function sendTelegram(user) {
   const flag = getFlagEmoji(user.country);
-  const message = `
-🚀🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥🚀
+  
+  // Date format set for exact output like "3/11/2026, 12:08:02 PM"
+  const dateStr = new Date().toLocaleString("en-US");
+
+  // Updated Message Template exactly like screenshot
+  const message = `🚀 🔥 <b>REBIRTH CHARITY – NEW MEMBER JOINED</b> 🔥 🚀
 ━━━━━━━━━━━━━━━━━━
 👤 <b>Name:</b> ${user.name}
 🆔 <b>User ID:</b> <code>${user.id}</code>
 🌍 <b>Country:</b> ${flag} ${user.country}
 💲 <b>Donate:</b> $30
 ━━━━━━━━━━━━━━━━━━
-⏰ <b>Date & Time:</b> ${new Date().toLocaleString()}
+⏰ <b>Date & Time:</b> ${dateStr}
 
-🎉 <b>Congratulations & Welcome!</b>
-`;
+🎉 <b>Congratulations & Welcome to REBIRTH CHARITY!</b>
+
+💰 <i>Start your journey and grow with our Rebirth charity community.</i>
+
+🔥 More leaders are joining every day!
+🚀 Don't miss the opportunity – Join Now!`;
+
+  // Inline Keyboard Button configuration (UPDATED)
+// Inline Keyboard Button configuration (100% FIXED)
+  const options = {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { 
+            text: "🚀 Join Rebirth Charity Now", 
+            url: "https://t.me/Rebirth_Charity_bot?start=join" 
+          }
+        ],
+        [
+          { 
+            text: "🌐 Open in Browser", 
+            url: "https://www.rebirthcharity.com" 
+          }
+        ]
+      ]
+    }
+  };
 
   try {
-    await bot.sendMessage(CHAT_ID, message, { parse_mode: "HTML" });
+    await bot.sendMessage(CHAT_ID, message, options);
     console.log("✅ Sent to Telegram:", user.id);
   } catch (err) {
-    console.log("❌ Telegram Error");
+    console.log("❌ Telegram Error:", err.message);
   }
 }
 
@@ -77,11 +108,11 @@ async function startWatcher() {
 
     const page = await browser.newPage();
     
-    // ⚡ SUPER SPEED: Block everything except HTML
+    // ⚡ SUPER SPEED: Block everything except HTML & JS
     await page.setRequestInterception(true);
     page.on('request', (req) => {
       const type = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'script', 'media'].includes(type)) {
+      if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
         req.abort();
       } else {
         req.continue();
@@ -100,7 +131,7 @@ async function startWatcher() {
       try {
         console.log("🔄 Checking for new members...");
         
-        // 'networkidle0' ki jagah 'domcontentloaded' use kiya hai taaki timeout na ho
+        // 'domcontentloaded' se page thoda fast return dega
         await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
 
         const users = await page.evaluate(() => {
@@ -123,7 +154,7 @@ async function startWatcher() {
           }
         }
 
-        // Har 30 second baad refresh karega agar site chalu hai
+        // Har 30 second baad refresh karega
         await new Promise(r => setTimeout(r, 30000));
 
       } catch (err) {
@@ -151,4 +182,4 @@ setInterval(async () => {
 
 // Prevention from unexpected crashes
 process.on("uncaughtException", (err) => console.log("System Error:", err.message));
-process.on("unhandledRejection", (err) => console.log("System Rejection"));
+process.on("unhandledRejection", (err) => console.log("System Rejection:", err.message));
