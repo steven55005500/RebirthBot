@@ -123,7 +123,34 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 🔥 Don’t Miss This Opportunity
 🎯 Start Your Journey Today
-🚀 Join Now & Grow Your Income`;
+🚀 Join Now & Grow Your Income
+
+
+
+🌍 REBIRTH CHARITY – DAILY ZOOM MEETING 🌍
+
+📅 Daily Zoom Meeting
+⏰ Join Sharp at 09:30 PM (India Time)
+
+🌎 International Time Schedule
+
+🇮🇳 India – 9:30 PM
+🇦🇪 Dubai – 8:00 PM
+🇧🇩 Bangladesh – 10:00 PM
+🇱🇰 Sri Lanka – 9:30 PM
+🇵🇰 Pakistan – 9:00 PM
+🇬🇧 United Kingdom – 4:00 PM
+🇺🇸 USA (New York) – 11:00 AM
+
+🔗 Join Zoom Meeting:
+https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
+
+🆔 Meeting ID: 847 9717 5150  
+🔑 Passcode: 12345  
+
+🚀 Be On Time • Learn • Grow • Succeed  
+
+🌟 REBIRTH CHARITY – Together We Rise!`;
 
 // ==========================================
 // SCHEDULER LOGIC (INDIA TIME)
