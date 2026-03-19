@@ -47,23 +47,17 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-⚡ 3. GLOBAL POOL EARNING
+⚡️ 3. GLOBAL POOL EARNING
 ➤ Earn $60 within 24 hours
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
 🎯 4. CHARITY HELP EARNING
-➤ Earn up to $2520 in 168 Days
+➤ Earn up to $81880 in 15 MONTH 18 DAYS
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-👑 5. ROYALTY INCOME
-✔ 15 Directs in 10 Days → $4.5 Daily
-✔ 30 Directs in 10 Days → $9 Daily
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-💼 6. DAILY SALARY INCOME
+💼 5. DAILY SALARY INCOME
 
 🥉 Rank 1
 ➤ 5 Direct | 50 Team → $1 Daily
@@ -81,44 +75,81 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 ➤ 50 Direct | 10000 Team → $50 Daily
 
 ━━━━━━━━━━━━━━━━━━━━━━
-
 💎 ACTIVATE WITH JUST $30 💎
 🌍 Enter GLOBAL POOL
-⚡ Earn $60 within 24 Hours
-
+⚡️ Earn $60 within 24 Hours
 ━━━━━━━━━━━━━━━━━━━━━━
-🌟 CHARITY HELP PROGRAM 🌟
+🌟 CHARITY HELP PROGRAM (STEP BY STEP EARNING) 🌟
 🟢 LEVEL 1 – $40
-⏳ 3 Days → Receive $120
-💸 Withdraw $40 | 🔁 $80 Upgrade
-
-
-🔵 LEVEL 2 – $80
-⏳ 15 Days → Receive $240
-💸 Withdraw $80 | 🔁 $160 Upgrade
-
-
-🟡 LEVEL 3 – $160
-⏳ 30 Days → Receive $480
-💸 Withdraw $160 | 🔁 $320 Upgrade
-
-
-🟣 LEVEL 4 – $320
-⏳ 30 Days → Receive $960
-💸 Withdraw $320 | 🔁 $640 Upgrade
-
-
-🔴 LEVEL 5 – $640
-⏳ 30 Days → Receive $1920
-💸 Withdraw $640 | 🔁 Upgrade 
-
-
-🏆 LEVEL 6 – $1280
-⏳ 60 Days → Receive $3840
-💸 Withdraw $1280 | 🎁 Charity Distribution
+⏳ 3 Days
+💸 Receive: $120
+💰 Withdraw: $40
+🔁 Upgrade: $80
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 TOTAL INCOME: $2520 IN 168 DAYS 🏆
-
+🔵 LEVEL 2 – $80
+⏳ 15 Days
+💸 Receive: $240
+💰 Withdraw: $80
+🔁 Upgrade: $160
+━━━━━━━━━━━━━━━━━━━━━━
+🟡 LEVEL 3 – $160
+⏳ 30 Days
+💸 Receive: $480
+💰 Withdraw: $160
+🔁 Upgrade: $320
+━━━━━━━━━━━━━━━━━━━━━━
+🟣 LEVEL 4 – $320
+⏳ 30 Days
+💸 Receive: $960
+💰 Withdraw: $320
+🔁 Upgrade: $640
+━━━━━━━━━━━━━━━━━━━━━━
+🔴 LEVEL 5 – $640
+⏳ 30 Days
+💸 Receive: $1920
+💰 Withdraw: $640
+🔁 Upgrade: $1280 
+━━━━━━━━━━━━━━━━━━━━━━
+🏆 LEVEL 6 – $1280
+⏳ 60 Days
+💸 Receive: $3840
+💰 Withdraw: $1280 
+🔁 Upgrade: $2560 
+━━━━━━━━━━━━━━━━━━━━━━
+🏆 LEVEL 7 – $2560
+⏳ 60 Days
+💸 Receive: $7680
+💰 Withdraw: $2560
+🔁 Upgrade: $5120
+━━━━━━━━━━━━━━━━━━━━━━
+🏆 LEVEL 8 – $5120
+⏳ 60 Days
+💸 Receive: $15360
+💰 Withdraw: $5120
+🔁 Upgrade: $10240
+━━━━━━━━━━━━━━━━━━━━━━
+🏆 LEVEL 9 – $10240
+⏳ 60 Days
+💸 Receive: $30720
+💰 Withdraw: $10240
+🔁 Upgrade: $20480
+━━━━━━━━━━━━━━━━━━━━━━
+🏆 LEVEL 10 – $20480
+⏳ 60 Days
+💸 Receive: $61440
+💰 Withdraw: $20480
+🔁 Upgrade: $40960
+━━━━━━━━━━━━━━━━━━━━━━
+👑 LEVEL 11 – $40960
+⏳ 60 Days
+💸 Receive: $122880
+💰 Withdraw: $40960
+🎁 Charity Distribution: $81920
+━━━━━━━━━━━━━━━━━━━━━━
+📊 TOTAL EARNING SUMMARY
+💰 TOTAL NET INCOME: $81880
+⏳ TOTAL TIME: 15 MONTH 18 DAYS
+━━━━━━━━━━━━━━━━━━━━━━
 
 
 🔥 Don’t Miss This Opportunity
