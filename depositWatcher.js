@@ -250,12 +250,18 @@ restartListener();
 
 // ================= RANDOM DELAY =================
 
-function randomDelay(){
-    const min = 15 * 1000; // 15 Seconds
-    const max = 30 * 1000; // 30 Seconds
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+function randomDelay() {
+    const min = 8 * 60 * 1000;  // 8 Minutes in ms (480,000)
+    const max = 10 * 60 * 1000; // 10 Minutes in ms (600,000)
+    
+    const waitTime = Math.floor(Math.random() * (max - min + 1)) + min;
+    
+    // Terminal pe dikhane ke liye kitne minute wait kar raha hai
+    const minutes = (waitTime / 60000).toFixed(2);
+    console.log(`⏳ Waiting for ${minutes} minutes before next message...`);
+    
+    return waitTime;
 }
-
 // ================= SEND LOOP =================
 
 async function senderLoop(){
