@@ -60,7 +60,7 @@ function isValidAmount(amount){
     
     // Sirf multiple of 30 allow honge (jaise 30, 60, 90, 120, 150)
     if(amount < 30) return false;
-    if(amount > 150) return false;
+    if(amount > 61) return false;
     if(amount % 30 !== 0) return false;
 
     // ----- NAYA LOGIC YAHAN HAI -----
@@ -319,3 +319,4 @@ startListener();
 senderLoop();
 
 })();
+
