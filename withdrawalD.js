@@ -25,37 +25,39 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 const ABI = ["event Transfer(address indexed from, address indexed to, uint256 value)"];
 let sent = new Set();
 
-// ================= PROVIDER LOGIC (FIXED) =================
+// ================= PROVIDER LOGIC (RE-FIXED) =================
 async function startProvider() {
   console.log("🔌 Connecting to RPC...");
 
   try {
+    // Purane connection ko saf karein
+    if (provider) {
+      provider.removeAllListeners();
+    }
+
     if (RPC1.startsWith("wss")) {
       provider = new ethers.WebSocketProvider(RPC1);
-
-      provider._websocket.on("open", () => {
-        console.log("✅ WSS Connected");
-        startBot();
-      });
-
-      provider._websocket.on("close", () => {
-        console.log("❌ WSS Disconnected... Reconnecting");
+      
+      // Ethers v6 stable way to handle WSS events
+      provider.websocket.onopen = () => console.log("✅ WSS Connected");
+      provider.websocket.onclose = () => {
+        console.log("❌ WSS Disconnected... Reconnecting in 5s");
         setTimeout(startProvider, 5000);
-      });
-
-      provider._websocket.on("error", (err) => {
-        console.log("⚠️ WSS Error:", err.message);
-      });
+      };
+      provider.websocket.onerror = (err) => console.log("⚠️ WSS Error:", err.message);
 
     } else {
       provider = new ethers.JsonRpcProvider(RPC1);
-      await provider.getNetwork();
-      console.log("✅ HTTP Connected");
-      startBot();
     }
 
+    // Network check
+    await provider.getNetwork();
+    console.log("✅ Network Ready!");
+    
+    startBot();
+
   } catch (err) {
-    console.log("❌ Network Error:", err.message, "Retrying...");
+    console.log("❌ Connection Error:", err.message, "Retrying...");
     setTimeout(startProvider, 5000);
   }
 }
@@ -76,8 +78,12 @@ function isValidTransaction(amount) {
   return true;
 }
 
-// ================= SENDER LOOP =================
+// ================= SENDER LOOP (DRIP FEED) =================
 async function senderLoop() {
+  // Loop sirf ek baar shuru hoga
+  if (global.isLoopRunning) return;
+  global.isLoopRunning = true;
+
   while (true) {
     if (txQueue.length > 0) {
       const tx = txQueue.shift();
@@ -102,10 +108,12 @@ https://bscscan.com/tx/${tx.hash}
 
       try {
         await bot.sendMessage(CHANNEL_ID, message);
-        console.log(`📤 Sent: ${tx.amount} USDT`);
+        console.log(`📤 Sent: ${tx.amount} USDT. Waiting for next drip...`);
 
-        // 10-15 min delay
-        const delay = Math.floor(Math.random() * (900000 - 600000 + 1)) + 600000;
+        // 10-15 min random delay
+        const min = 10 * 60 * 1000;
+        const max = 15 * 60 * 1000;
+        const delay = Math.floor(Math.random() * (max - min + 1)) + min;
         await new Promise(r => setTimeout(r, delay));
 
       } catch (e) {
@@ -138,11 +146,10 @@ function startListener() {
       if (sent.has(hash)) return;
 
       if (isValidTransaction(amount)) {
-        console.log(`📦 Matched: ${amount} USDT`);
+        console.log(`📦 Matched & Queued: ${amount} USDT`);
 
         sent.add(hash);
         hourlyTracker.push(Date.now());
-
         txQueue.push({ from, to, amount, hash });
       }
 
@@ -154,9 +161,8 @@ function startListener() {
   });
 }
 
-// ================= ERROR =================
+// ================= ERROR PROTECTION =================
 process.on("uncaughtException", (err) => console.log("System Error:", err.message));
 process.on("unhandledRejection", (err) => console.log("Promise Rejection:", err?.message));
 
-// ================= START =================
 startProvider();
