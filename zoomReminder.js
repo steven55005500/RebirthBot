@@ -6,20 +6,20 @@ const cron = require("node-cron");
 const bot = new TelegramBot(process.env.BOT_TOKEN);
 const CHAT_ID = process.env.CHAT_ID;
 
-const message1 = `🌍 REBIRTH CHARITY – DAILY ZOOM MEETING 🌍
+const message1 = `🌍 ZOOM MEETING Rebirth Charity 🌍
 
 📅 Daily Zoom Meeting
-⏰ Join Sharp at 09:30 PM (India Time)
+⏰ Join Sharp at 07:30 PM (India Time)
 
 🌎 International Time Schedule
 
-🇮🇳 India – 9:30 PM
-🇦🇪 Dubai – 8:00 PM
-🇧🇩 Bangladesh – 10:00 PM
-🇱🇰 Sri Lanka – 9:30 PM
-🇵🇰 Pakistan – 9:00 PM
-🇬🇧 United Kingdom – 4:00 PM
-🇺🇸 USA (New York) – 11:00 AM
+🇮🇳 India – 7:30 PM
+🇦🇪 Dubai – 6:00 PM
+🇧🇩 Bangladesh – 8:00 PM
+🇱🇰 Sri Lanka – 7:30 PM
+🇵🇰 Pakistan – 7:00 PM
+🇬🇧 United Kingdom – 2:00 PM
+🇺🇸 USA (New York) – 9:00 AM
 
 🔗 Join Zoom Meeting:
 https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
@@ -158,20 +158,20 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 
 
-🌍 REBIRTH CHARITY – DAILY ZOOM MEETING 🌍
-
+ 
 📅 Daily Zoom Meeting
-⏰ Join Sharp at 09:30 PM (India Time)
+⏰ Join Sharp at 07:30 PM (India Time)
 
 🌎 International Time Schedule
 
-🇮🇳 India – 9:30 PM
-🇦🇪 Dubai – 8:00 PM
-🇧🇩 Bangladesh – 10:00 PM
-🇱🇰 Sri Lanka – 9:30 PM
-🇵🇰 Pakistan – 9:00 PM
-🇬🇧 United Kingdom – 4:00 PM
-🇺🇸 USA (New York) – 11:00 AM
+🇮🇳 India – 7:30 PM
+🇦🇪 Dubai – 6:00 PM
+🇧🇩 Bangladesh – 8:00 PM
+🇱🇰 Sri Lanka – 7:30 PM
+🇵🇰 Pakistan – 7:00 PM
+🇬🇧 United Kingdom – 2:00 PM
+🇺🇸 USA (New York) – 9:00 AM
+
 
 🔗 Join Zoom Meeting:
 https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
