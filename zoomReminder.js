@@ -186,21 +186,26 @@ https://us06web.zoom.us/j/84797175150?pwd=SkE1ZnwwHEKUykSHPUtUYspVXcxopO.1
 // ==========================================
 // SCHEDULER LOGIC (INDIA TIME)
 // ==========================================
+// 1. Message 1: Har 15 minute me (5:00 PM se 7:30 PM tak)
+cron.schedule('*/15 17-19 * * *', async () => {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const hours = now.getHours();
 
-// 1. Message 1: Har 15 minute me (Sham 7:00 PM se 9:45 PM tak)
-cron.schedule('*/15 19-21 * * *', async () => {
+  // Stop after 7:30 PM
+  if (hours === 19 && minutes > 30) return;
+
   try {
     await bot.sendMessage(CHAT_ID, message1);
-    console.log("Zoom message sent (15-min interval)");
+    console.log("Zoom message sent (5:00 PM to 7:30 PM)");
   } catch (err) {
     console.log("Error:", err.message);
   }
 }, {
   timezone: "Asia/Kolkata"
 });
-
 // 2. Message 1: Raat 10:00 PM ke liye exact time
-cron.schedule('0 22 * * *', async () => {
+cron.schedule('0 19 * * *', async () => {
   try {
     await bot.sendMessage(CHAT_ID, message1);
     console.log("Zoom message sent (Exact 10:00 PM)");
