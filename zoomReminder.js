@@ -37,27 +37,24 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-💰 1. DIRECT EARNING (50%)
-➤ Earn $15 instantly for every direct referral
 
-━━━━━━━━━━━━━━━━━━━━━━
 
-🌐 2. 20 LEVEL TEAM EARNING
+🌐 1. 20 LEVEL TEAM EARNING
 ➤ Get 1% commission from each level (up to 20 levels)
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-⚡️ 3. GLOBAL POOL EARNING
+⚡️ 2. GLOBAL POOL EARNING
 ➤ Earn $60 within 24 hours
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 4. CHARITY HELP EARNING
+🎯 3. CHARITY HELP EARNING
 ➤ Earn up to $81880 in 15 MONTH 18 DAYS
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-💼 5. DAILY SALARY INCOME
+💼 4. DAILY SALARY INCOME
 
 🥉 Rank 1
 ➤ 5 Direct | 50 Team → $1 Daily
@@ -77,7 +74,7 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 ━━━━━━━━━━━━━━━━━━━━━━
 💎 ACTIVATE WITH JUST $30 💎
 🌍 Enter GLOBAL POOL
-⚡️ Earn $60 within 24 Hours
+⚡️ Earn $60 within 24 Hours and enter charity help program automatically 
 ━━━━━━━━━━━━━━━━━━━━━━
 🌟 CHARITY HELP PROGRAM (STEP BY STEP EARNING) 🌟
 🟢 LEVEL 1 – $40
@@ -158,7 +155,7 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 
 
- 
+
 📅 Daily Zoom Meeting
 ⏰ Join Sharp at 07:00 PM (India Time)
 
