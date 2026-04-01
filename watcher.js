@@ -110,7 +110,7 @@ async function sendTelegram(user) {
 🌍 <b>Country:</b> ${flag} ${user.country}
 💲 <b>Donate:</b> $30
 ━━━━━━━━━━━━━━━━━━
-⏰ <b>Date & Time:</b> ${new Date().toLocaleString()}
+⏰ <b>Date:</b> ${new Date().toLocaleDateString()}
 
 🎉 <b>Congratulations & Welcome to REBIRTH CHARITY!</b>
 
