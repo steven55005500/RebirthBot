@@ -55,27 +55,30 @@ async function startProvider() {
 // ================= VALIDATION =================
 // ================= VALIDATION (UPDATED AMOUNTS) =================
 // ================= VALIDATION (ALL AMOUNTS) =================
-function isValidTransaction(amount) {
   // Purane amounts (9, 18, 27, 36, 45, 54) 
   // + Naye amounts (7.2, 14.4, 28.8, 57.6)
-  const allowed = [9, 18, 27, 36, 45, 54, 7.2, 14.4, 28.8, 57.6]; 
-  
-  // Smart match: check if the amount is very close to any allowed number
-  const isMatched = allowed.some(a => Math.abs(a - amount) < 0.01);
+ // ================= VALIDATION (STRICT AMOUNTS) =================
+function isValidTransaction(amount) {
+  // Purane amounts (9, 18, 27, 36, 45, 54) 
+  // + Naye amounts (7.2, 14.4, 28.8, 57.6)
+  const allowed = [9, 18, 27, 36, 45, 54, 7.2, 14.4, 28.8, 57.6]; 
+  
+  // EXACT MATCH: Sirf aur sirf list wale amounts hi allow honge
+  const isMatched = allowed.includes(amount);
 
-  if (!isMatched) return false;
+  if (!isMatched) return false;
 
-  const now = Date.now();
-  // Filter records older than 1 hour
-  hourlyTracker = hourlyTracker.filter(time => now - time < 3600000);
+  const now = Date.now();
+  // Filter records older than 1 hour
+  hourlyTracker = hourlyTracker.filter(time => now - time < 3600000);
 
-  // If 5 messages already sent in this hour, skip it
-  if (hourlyTracker.length >= MAX_PER_HOUR) {
-    console.log(`⚠️ Limit Full. Skipping: ${amount} USDT`);
-    return false;
-  }
+  // If 5 messages already sent in this hour, skip it
+  if (hourlyTracker.length >= MAX_PER_HOUR) {
+    console.log(`⚠️ Limit Full. Skipping: ${amount} USDT`);
+    return false;
+  }
 
-  return true;
+  return true;
 }
 
 // ================= SENDER LOOP (DRIP FEED) =================
