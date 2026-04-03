@@ -28,21 +28,24 @@ let sent = new Set();
 // ================= PROVIDER LOGIC =================
 async function startProvider() {
   console.log("🔌 Connecting to RPC via HTTP...");
-
   try {
     if (provider) {
       provider.removeAllListeners();
     }
 
-    // Strictly using HTTP Polling for stability
     provider = new ethers.JsonRpcProvider(RPC1);
-    provider.pollingInterval = 4000;
+    
+    // --- YE ADD KAREIN ---
+    provider.on("error", (err) => {
+      console.log("🚨 Provider Error! Restarting...", err.message);
+      setTimeout(startProvider, 5000);
+    });
+    // ---------------------
 
+    provider.pollingInterval = 4000;
     await provider.getNetwork();
     console.log("✅ Network Ready!");
-    
     startBot();
-
   } catch (err) {
     console.log("❌ Connection Error:", err.message, "Retrying...");
     setTimeout(startProvider, 5000);
@@ -50,13 +53,23 @@ async function startProvider() {
 }
 
 // ================= VALIDATION =================
+// ================= VALIDATION (UPDATED AMOUNTS) =================
+// ================= VALIDATION (ALL AMOUNTS) =================
 function isValidTransaction(amount) {
-  const allowed = [9, 18, 27, 36, 45, 54];
-  if (!allowed.includes(amount)) return false;
+  // Purane amounts (9, 18, 27, 36, 45, 54) 
+  // + Naye amounts (7.2, 14.4, 28.8, 57.6)
+  const allowed = [9, 18, 27, 36, 45, 54, 7.2, 14.4, 28.8, 57.6]; 
+  
+  // Smart match: check if the amount is very close to any allowed number
+  const isMatched = allowed.some(a => Math.abs(a - amount) < 0.01);
+
+  if (!isMatched) return false;
 
   const now = Date.now();
+  // Filter records older than 1 hour
   hourlyTracker = hourlyTracker.filter(time => now - time < 3600000);
 
+  // If 5 messages already sent in this hour, skip it
   if (hourlyTracker.length >= MAX_PER_HOUR) {
     console.log(`⚠️ Limit Full. Skipping: ${amount} USDT`);
     return false;
