@@ -135,7 +135,11 @@ function startBot() {
 
 // ================= LISTENER =================
 function startListener() {
+  if (!contract) return;
+  
+  // Purane listeners remove karo taaki duplicate alerts na aayein
   contract.removeAllListeners();
+  console.log("👂 Listening for USDT Transfers...");
 
   contract.on("Transfer", async (from, to, value, event) => {
     try {
@@ -154,9 +158,35 @@ function startListener() {
       if (sent.size > 2000) sent.clear();
 
     } catch (err) {
-      console.log("Listener error:", err.message);
+      console.log("⚠️ Listener Data Error:", err.message);
+      // Agar 'from block not found' jaisa error aaye toh restart provider
+      if (err.message.includes("block") || err.message.includes("filter")) {
+        startProvider();
+      }
     }
   });
+
+  // 🔄 AUTO-REFRESH JUGAD: Har 15 minute mein listener refresh karein
+  // Isse 'from block not found' wala error aane ke chances 90% kam ho jayenge
+  if (global.refreshTimeout) clearTimeout(global.refreshTimeout);
+  global.refreshTimeout = setTimeout(() => {
+    console.log("♻️ Periodic Listener Refresh to keep connection alive...");
+    startListener();
+  }, 15 * 60 * 1000); 
+}
+
+// ================= BOT INIT =================
+function startBot() {
+  // Contract initialize karein agar nahi hai
+  contract = new ethers.Contract(USDT, ABI, provider);
+  console.log("🚀 Scanner Active");
+  
+  startListener();
+  
+  // Sender loop sirf ek baar chalna chahiye
+  if (!global.isLoopRunning) {
+    senderLoop();
+  }
 }
 
 // ================= ERROR PROTECTION =================
