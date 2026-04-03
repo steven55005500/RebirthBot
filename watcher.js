@@ -206,42 +206,46 @@ async function startWatcher() {
         console.log("Page refreshed");
 
         // SMART TEXT PARSER - Extracts data without needing exact HTML tags
+       // SMART TEXT PARSER - UPDATED
         const users = await page.evaluate(() => {
-          // Finds all container blocks on the page (like cards or rows)
-          const elements = document.querySelectorAll("div.card, table tbody tr, div[class*='row'], div[style*='border'], div[class*='box']");
+          // Grab generic containers
+          const elements = document.querySelectorAll("div, li, tr");
           const results = [];
 
           for (const el of elements) {
             const text = el.innerText || "";
-            // Only process blocks that have an ID in them
-            if (!text.includes("ID :")) continue;
+            
+            // THE FIX: Count how many times "ID :" appears in this specific element.
+            // If it appears more than once, it means this is a parent container (like the whole page).
+            // We only want the innermost card, which will have exactly ONE ID.
+            const idCount = (text.match(/ID\s*:/g) || []).length;
+            if (idCount !== 1) continue; 
 
             const idMatch = text.match(/ID\s*:\s*(\d+)/);
-            const id = idMatch ? idMatch[1] : null;
+            if (!idMatch) continue;
+            
+            const id = idMatch[1];
 
-            if (!id) continue;
-
-            // Split the text into an array of lines to extract Name and Country
+            // Split the text into an array of lines
             const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
             let name = "Unknown";
             let country = "Unknown";
 
-            // Loop through the lines to figure out where Name and Country are placed
+            // Find the ID line, then grab the Country (1 line up) and Name (2 lines up)
             for (let i = 0; i < lines.length; i++) {
               if (lines[i].includes("ID :")) {
-                // The country is usually the line right before the ID
-                if (i >= 1 && !lines[i-1].includes("PM") && !lines[i-1].includes("AM") && !lines[i-1].match(/^\d+$/)) {
-                  country = lines[i-1];
-                }
-                // The name is usually the line right above the country
-                if (i >= 2 && !lines[i-2].includes("PM") && !lines[i-2].includes("AM") && !lines[i-2].match(/^\d+$/)) {
-                  name = lines[i-2];
-                }
+                if (i >= 1) country = lines[i - 1];
+                if (i >= 2) name = lines[i - 2];
               }
             }
 
-            // Ensure we don't accidentally add duplicates from nested HTML tags
+            // Extra Safety Check: Make sure the extracted name isn't actually the Date or a Number
+            if (name.includes("PM") || name.includes("AM") || /^\d+$/.test(name) || name === "Unknown") {
+               continue; 
+            }
+
+            // Push to results if we haven't added this ID yet
             if (!results.find(u => u.id === id)) {
               results.push({ id, name, country });
             }
