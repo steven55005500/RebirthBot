@@ -27,28 +27,23 @@ const ABI = ["event Transfer(address indexed from, address indexed to, uint256 v
 let sent = new Set();
 
 // ================= CONNECT FUNCTION =================
-function connectProvider(rpcUrl) {
+async function connectProvider(rpcUrl) {
   console.log(`🔌 Connecting to: ${rpcUrl}`);
 
-  provider = new ethers.WebSocketProvider(rpcUrl);
-// Connect hone par
-  provider.websocket.onopen = () => {
-    console.log("✅ WebSocket Connected");
+  try {
+    provider = new ethers.JsonRpcProvider(rpcUrl);
+    provider.pollingInterval = 4000;
+    
+    await provider.getNetwork();
+    console.log("✅ Network Ready!");
     startBot();
-  };
 
-  // Disconnect hone par
-  provider.websocket.onclose = () => {
-    console.log("❌ WebSocket Disconnected");
+  } catch (err) {
+    console.log("❌ Connection Error:", err.message);
     currentRPC = currentRPC === RPC_PRIMARY ? RPC_BACKUP : RPC_PRIMARY;
     console.log("🔁 Switching RPC...");
     setTimeout(() => connectProvider(currentRPC), 3000);
-  };
-
-  // Error aane par
-  provider.websocket.onerror = (err) => {
-    console.log("⚠️ WebSocket Error:", err.message);
-  };
+  }
 }
 
 // ================= TELEGRAM =================
@@ -105,7 +100,6 @@ function startListener() {
       if (sent.has(hash)) return;
 
       sent.add(hash);
-
       await sendNotification({ from, to, amount, hash });
 
       if (sent.size > 2000) sent.clear();
@@ -122,4 +116,3 @@ process.on("unhandledRejection", (err) => console.log("Promise Error:", err?.mes
 
 // ================= START =================
 connectProvider(currentRPC);
-setInterval(() => {}, 1000);

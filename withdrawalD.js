@@ -25,32 +25,19 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 const ABI = ["event Transfer(address indexed from, address indexed to, uint256 value)"];
 let sent = new Set();
 
-// ================= PROVIDER LOGIC (RE-FIXED) =================
+// ================= PROVIDER LOGIC =================
 async function startProvider() {
-  console.log("🔌 Connecting to RPC...");
+  console.log("🔌 Connecting to RPC via HTTP...");
 
   try {
-    // Purane connection ko saf karein
     if (provider) {
       provider.removeAllListeners();
     }
 
-    if (RPC1.startsWith("wss")) {
-      provider = new ethers.WebSocketProvider(RPC1);
-      
-      // Ethers v6 stable way to handle WSS events
-      provider.websocket.onopen = () => console.log("✅ WSS Connected");
-      provider.websocket.onclose = () => {
-        console.log("❌ WSS Disconnected... Reconnecting in 5s");
-        setTimeout(startProvider, 5000);
-      };
-      provider.websocket.onerror = (err) => console.log("⚠️ WSS Error:", err.message);
+    // Strictly using HTTP Polling for stability
+    provider = new ethers.JsonRpcProvider(RPC1);
+    provider.pollingInterval = 4000;
 
-    } else {
-      provider = new ethers.JsonRpcProvider(RPC1);
-    }
-
-    // Network check
     await provider.getNetwork();
     console.log("✅ Network Ready!");
     
@@ -80,7 +67,6 @@ function isValidTransaction(amount) {
 
 // ================= SENDER LOOP (DRIP FEED) =================
 async function senderLoop() {
-  // Loop sirf ek baar shuru hoga
   if (global.isLoopRunning) return;
   global.isLoopRunning = true;
 
@@ -147,7 +133,6 @@ function startListener() {
 
       if (isValidTransaction(amount)) {
         console.log(`📦 Matched & Queued: ${amount} USDT`);
-
         sent.add(hash);
         hourlyTracker.push(Date.now());
         txQueue.push({ from, to, amount, hash });
