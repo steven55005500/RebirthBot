@@ -14,10 +14,11 @@ if (!RPC1 || !TELEGRAM_TOKEN || !CHANNEL_ID) {
 const USDT = "0x55d398326f99059ff775485246999027b3197955";
 const DECIMALS = 18;
 
-// Limits & Timing
+// ================= LIMITS & TIMING =================
 let txQueue = []; 
-let hourlyTracker = []; 
-const MAX_PER_HOUR = 5;
+let hourlyTracker = []; // Ab isme { time, type } save hoga
+const MAX_PER_HOUR = 5; // 1 ghante mein total max 5 messages
+const MAX_OLD_PER_HOUR = 2; // Purane amounts sirf 3 allow honge (2 naye ke liye reserve)
 
 let provider;
 let contract;
@@ -35,12 +36,10 @@ async function startProvider() {
 
     provider = new ethers.JsonRpcProvider(RPC1);
     
-    // --- YE ADD KAREIN ---
     provider.on("error", (err) => {
       console.log("🚨 Provider Error! Restarting...", err.message);
       setTimeout(startProvider, 5000);
     });
-    // ---------------------
 
     provider.pollingInterval = 4000;
     await provider.getNetwork();
@@ -52,33 +51,42 @@ async function startProvider() {
   }
 }
 
-// ================= VALIDATION =================
-// ================= VALIDATION (UPDATED AMOUNTS) =================
-// ================= VALIDATION (ALL AMOUNTS) =================
-  // Purane amounts (9, 18, 27, 36, 45, 54) 
-  // + Naye amounts (7.2, 14.4, 28.8, 57.6)
- // ================= VALIDATION (STRICT AMOUNTS) =================
+// ================= QUOTA SYSTEM VALIDATION =================
 function isValidTransaction(amount) {
-  // Purane amounts (9, 18, 27, 36, 45, 54) 
-  // + Naye amounts (7.2, 14.4, 28.8, 57.6)
-  const allowed = [9, 18, 27, 36, 45, 54, 7.2, 14.4, 28.8, 57.6]; 
-  
-  // EXACT MATCH: Sirf aur sirf list wale amounts hi allow honge
-  const isMatched = allowed.includes(amount);
+  const oldAmounts = [9, 18, 27, 36, 45, 54];
+  const newAmounts = [7.2, 14.4, 28.8, 57.6];
+  
+  let type = "";
+  
+  if (oldAmounts.includes(amount)) {
+    type = "old";
+  } else if (newAmounts.includes(amount)) {
+    type = "new";
+  } else {
+    // Exact match nahi hua toh reject
+    return { valid: false }; 
+  }
 
-  if (!isMatched) return false;
+  const now = Date.now();
+  // Filter records older than 1 hour (dhyaan rakhein ab object check kar rahe hain)
+  hourlyTracker = hourlyTracker.filter(record => now - record.time < 3600000);
 
-  const now = Date.now();
-  // Filter records older than 1 hour
-  hourlyTracker = hourlyTracker.filter(time => now - time < 3600000);
+  // Sirf purane amounts ka count nikalein
+  const oldMsgCount = hourlyTracker.filter(record => record.type === "old").length;
 
-  // If 5 messages already sent in this hour, skip it
-  if (hourlyTracker.length >= MAX_PER_HOUR) {
-    console.log(`⚠️ Limit Full. Skipping: ${amount} USDT`);
-    return false;
-  }
+  // Agar amount purana hai aur uski limit poori ho chuki hai
+  if (type === "old" && oldMsgCount >= MAX_OLD_PER_HOUR) {
+    console.log(`⚠️ Old Amount Quota Full (${MAX_OLD_PER_HOUR}). Naye amounts ke liye reserved. Skipping: ${amount} USDT`);
+    return { valid: false };
+  }
 
-  return true;
+  // Total messages ki limit check karein
+  if (hourlyTracker.length >= MAX_PER_HOUR) {
+    console.log(`⚠️ Total Hourly Limit Full. Skipping: ${amount} USDT`);
+    return { valid: false };
+  }
+
+  return { valid: true, type: type };
 }
 
 // ================= SENDER LOOP (DRIP FEED) =================
@@ -128,19 +136,10 @@ https://bscscan.com/tx/${tx.hash}
   }
 }
 
-// ================= BOT INIT =================
-function startBot() {
-  contract = new ethers.Contract(USDT, ABI, provider);
-  console.log("🚀 Scanner Active");
-  startListener();
-  senderLoop();
-}
-
 // ================= LISTENER =================
 function startListener() {
   if (!contract) return;
   
-  // Purane listeners remove karo taaki duplicate alerts na aayein
   contract.removeAllListeners();
   console.log("👂 Listening for USDT Transfers...");
 
@@ -151,10 +150,15 @@ function startListener() {
 
       if (sent.has(hash)) return;
 
-      if (isValidTransaction(amount)) {
-        console.log(`📦 Matched & Queued: ${amount} USDT`);
+      // Naya validation function use karna jo object return karta hai
+      const validation = isValidTransaction(amount);
+
+      if (validation.valid) {
+        console.log(`📦 Matched & Queued: ${amount} USDT [Type: ${validation.type.toUpperCase()}]`);
         sent.add(hash);
-        hourlyTracker.push(Date.now());
+        
+        // Puraane Date.now() ki jagah object save kar rahe hain taaki count sahi rahe
+        hourlyTracker.push({ time: Date.now(), type: validation.type });
         txQueue.push({ from, to, amount, hash });
       }
 
@@ -162,15 +166,13 @@ function startListener() {
 
     } catch (err) {
       console.log("⚠️ Listener Data Error:", err.message);
-      // Agar 'from block not found' jaisa error aaye toh restart provider
       if (err.message.includes("block") || err.message.includes("filter")) {
         startProvider();
       }
     }
   });
 
-  // 🔄 AUTO-REFRESH JUGAD: Har 15 minute mein listener refresh karein
-  // Isse 'from block not found' wala error aane ke chances 90% kam ho jayenge
+  // 🔄 AUTO-REFRESH JUGAD
   if (global.refreshTimeout) clearTimeout(global.refreshTimeout);
   global.refreshTimeout = setTimeout(() => {
     console.log("♻️ Periodic Listener Refresh to keep connection alive...");
@@ -180,13 +182,11 @@ function startListener() {
 
 // ================= BOT INIT =================
 function startBot() {
-  // Contract initialize karein agar nahi hai
   contract = new ethers.Contract(USDT, ABI, provider);
   console.log("🚀 Scanner Active");
   
   startListener();
   
-  // Sender loop sirf ek baar chalna chahiye
   if (!global.isLoopRunning) {
     senderLoop();
   }
