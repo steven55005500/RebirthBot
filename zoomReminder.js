@@ -62,32 +62,32 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 🎁 Reward: $15
 
 🥈 Rank 2
-➤ 2 Rank 1 Direct | 25 Team
+➤ 2 Direct Rank 1 | 25 Team
 💰 Salary: $45/month
 🎁 Reward: $50
 
 🥇 Rank 3
-➤ 3 Rank 1 Direct | 125 Team
+➤ 3 Direct Rank 1 | 125 Team
 💰 Salary: $105/month
 🎁 Reward: $150
 
 🏆 Rank 4
-➤ 4 Rank 1 Direct | 500 Team
+➤ 4 Direct Rank 1 | 500 Team
 💰 Salary: $225/month
 🎁 Reward: $300
 
 👑 Rank 5
-➤ 5 Rank 1 Direct | 1000 Team
+➤ 5 Direct Rank 1 | 1000 Team
 💰 Salary: $450/month
 🎁 Reward: $500
 
 💎 Rank 6
-➤ 6 Rank 1 Direct | 2000 Team
+➤ 6 Direct Rank 1 | 2000 Team
 💰 Salary: $900/month
 🎁 Reward: $1000
 
 🚀 Rank 7
-➤ 7 Rank 1 Direct | 5000 Team
+➤ 7 Direct Rank 1 | 5000 Team
 💰 Salary: $1500/month
 🎁 Reward: $3000
 
@@ -99,67 +99,67 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 ⚡️ Earn $60 within 24 Hours and enter charity help program automatically 
 ━━━━━━━━━━━━━━━━━━━━━━
 🌟 CHARITY HELP PROGRAM (STEP BY STEP EARNING) 🌟
-🟢 LEVEL 1 – $40
+🟢 Charity Help-1 – $40
 ⏳ 3 Days
 💸 Receive: $120
 💰 Withdraw: $40
 🔁 Upgrade: $80
 ━━━━━━━━━━━━━━━━━━━━━━
-🔵 LEVEL 2 – $80
+🔵 Charity Help–2 - $80
 ⏳ 15 Days
 💸 Receive: $240
 💰 Withdraw: $80
 🔁 Upgrade: $160
 ━━━━━━━━━━━━━━━━━━━━━━
-🟡 LEVEL 3 – $160
+🟡 Charity Help-3 - $160
 ⏳ 30 Days
 💸 Receive: $480
 💰 Withdraw: $160
 🔁 Upgrade: $320
 ━━━━━━━━━━━━━━━━━━━━━━
-🟣 LEVEL 4 – $320
+🟣 Charity Help-4 – $320
 ⏳ 30 Days
 💸 Receive: $960
 💰 Withdraw: $320
 🔁 Upgrade: $640
 ━━━━━━━━━━━━━━━━━━━━━━
-🔴 LEVEL 5 – $640
+🔴 Charity Help-5 – $640
 ⏳ 30 Days
 💸 Receive: $1920
 💰 Withdraw: $640
 🔁 Upgrade: $1280 
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 LEVEL 6 – $1280
+🏆 Charity Help- 6 – $1280
 ⏳ 60 Days
 💸 Receive: $3840
 💰 Withdraw: $1280 
 🔁 Upgrade: $2560 
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 LEVEL 7 – $2560
+🏆 Charity Help-7 – $2560
 ⏳ 60 Days
 💸 Receive: $7680
 💰 Withdraw: $2560
 🔁 Upgrade: $5120
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 LEVEL 8 – $5120
+🏆 Charity Help-8 – $5120
 ⏳ 60 Days
 💸 Receive: $15360
 💰 Withdraw: $5120
 🔁 Upgrade: $10240
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 LEVEL 9 – $10240
+🏆 Charity Help-9 – $10240
 ⏳ 60 Days
 💸 Receive: $30720
 💰 Withdraw: $10240
 🔁 Upgrade: $20480
 ━━━━━━━━━━━━━━━━━━━━━━
-🏆 LEVEL 10 – $20480
+🏆 Charity Help-10 – $20480
 ⏳ 60 Days
 💸 Receive: $61440
 💰 Withdraw: $20480
 🔁 Upgrade: $40960
 ━━━━━━━━━━━━━━━━━━━━━━
-👑 LEVEL 11 – $40960
+👑 Charity Help-11 – $40960
 ⏳ 60 Days
 💸 Receive: $122880
 💰 Withdraw: $40960
