@@ -91,7 +91,9 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 💰 Salary: $1500/month
 🎁 Reward: $3000
 
+
 ━━━━━━━━━━━━━━━━━━━━━━
+
 💎 ACTIVATE WITH JUST $30 💎
 🌍 Enter GLOBAL POOL
 ⚡️ Earn $60 within 24 Hours and enter charity help program automatically 
