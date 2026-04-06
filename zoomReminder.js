@@ -54,7 +54,7 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-💼 4. DAILY SALARY INCOME
+💼 4. SALARY EARNING
  
 🥉 Rank 1
 ➤ 5 Direct | 10 Team
