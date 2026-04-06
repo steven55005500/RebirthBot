@@ -55,21 +55,41 @@ const message2 = `🔥🚀 REBIRTH CHARITY – OFFICIAL EARNING PLAN 🚀🔥
 ━━━━━━━━━━━━━━━━━━━━━━
 
 💼 4. DAILY SALARY INCOME
-
+ 
 🥉 Rank 1
-➤ 5 Direct | 50 Team → $1 Daily
+➤ 5 Direct | 10 Team
+💰 Salary: $18/month
+🎁 Reward: $15
 
 🥈 Rank 2
-➤ 10 Direct | 250 Team → $5 Daily
+➤ 2 Rank 1 Direct | 25 Team
+💰 Salary: $45/month
+🎁 Reward: $50
 
 🥇 Rank 3
-➤ 20 Direct | 1200 Team → $10 Daily
+➤ 3 Rank 1 Direct | 125 Team
+💰 Salary: $105/month
+🎁 Reward: $150
 
 🏆 Rank 4
-➤ 30 Direct | 5000 Team → $25 Daily
+➤ 4 Rank 1 Direct | 500 Team
+💰 Salary: $225/month
+🎁 Reward: $300
 
 👑 Rank 5
-➤ 50 Direct | 10000 Team → $50 Daily
+➤ 5 Rank 1 Direct | 1000 Team
+💰 Salary: $450/month
+🎁 Reward: $500
+
+💎 Rank 6
+➤ 6 Rank 1 Direct | 2000 Team
+💰 Salary: $900/month
+🎁 Reward: $1000
+
+🚀 Rank 7
+➤ 7 Rank 1 Direct | 5000 Team
+💰 Salary: $1500/month
+🎁 Reward: $3000
 
 ━━━━━━━━━━━━━━━━━━━━━━
 💎 ACTIVATE WITH JUST $30 💎
